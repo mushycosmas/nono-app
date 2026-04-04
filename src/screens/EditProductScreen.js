@@ -25,7 +25,9 @@ export default function EditProductScreen() {
   const getImageUrl = (img: string) => {
     if (!img) return "https://placehold.co/100x100"; // fallback
     if (img.startsWith("http")) return img;
+    
     return `${BASE_URL}${img}`;
+  
   };
 
   // Form state

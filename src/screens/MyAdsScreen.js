@@ -22,11 +22,16 @@ export default function MyAdsScreen() {
     fetchAds();
   }, []);
 
+  // ✅ FETCH ADS
   const fetchAds = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/seller/products?user_id=${USER_ID}`);
+      const res = await fetch(
+        `${BASE_URL}/seller/products?user_id=${USER_ID}`
+      );
+
       const data = await res.json();
-      const products = data?.products || data || [];
+      const products = data?.products || [];
+
       setAds(products);
     } catch (error) {
       console.log("Ads Error:", error);
@@ -36,6 +41,7 @@ export default function MyAdsScreen() {
     }
   };
 
+  // ✅ DELETE PRODUCT
   const handleDelete = (id) => {
     Alert.alert("Delete", "Are you sure you want to delete this product?", [
       { text: "Cancel" },
@@ -49,7 +55,9 @@ export default function MyAdsScreen() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id }),
             });
+
             const data = await res.json();
+
             if (res.ok) {
               setAds((prev) => prev.filter((item) => item.id !== id));
               Alert.alert("Success", "Ad deleted successfully");
@@ -65,43 +73,76 @@ export default function MyAdsScreen() {
     ]);
   };
 
+  // ✅ SHORT TITLE
   const shortTitle = (text) => {
     if (!text) return "";
     return text.length > 25 ? text.substring(0, 25) + "..." : text;
   };
 
-  // ✅ Always return only ONE image for listing screen
-  const getImage = (item) => {
-    if (!item) return "https://placehold.co/100x100";
-    const firstImage = (item.images && item.images[0]) || item.image_url;
-    if (firstImage) return firstImage.startsWith("http") ? firstImage : `${BASE_URL}${firstImage}`;
-    return "https://placehold.co/100x100";
-  };
+  // ✅ FIXED IMAGE HANDLER
+ const getImage = (item) => {
+  if (!item) return "https://placehold.co/100x100";
 
+  let img =
+    (Array.isArray(item.images) && item.images[0]) ||
+    item.image_url;
+
+  if (!img) return "https://placehold.co/100x100";
+
+  // 🔥 REMOVE /api
+  const BASE = BASE_URL.replace("/api", "");
+
+  return img.startsWith("http")
+    ? img
+    : `${BASE}${img}`;
+};
+      
+
+  // ✅ RENDER ITEM
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <Image source={{ uri: getImage(item) }} style={styles.image} />
+      <Image
+        source={{ uri: getImage(item) }}
+        style={styles.image}
+        resizeMode="cover"
+        onError={(e) =>
+          console.log("Image load error:", e.nativeEvent.error)
+        }
+      />
 
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text style={styles.title}>{shortTitle(item?.title || item?.name)}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>
+            {shortTitle(item?.title || item?.name)}
+          </Text>
+
           {item?.is_best && (
-            <Text style={styles.bestBadge}>BEST</Text> // Optional “best” badge
+            <Text style={styles.bestBadge}>BEST</Text>
           )}
         </View>
 
-        <Text style={styles.price}>TZS {item?.price || item?.selling_price}</Text>
-        <Text style={styles.views}>👁 {item?.views || item?.viewed || 0} views</Text>
+        <Text style={styles.price}>
+          TZS {item?.price || item?.selling_price}
+        </Text>
+
+        <Text style={styles.views}>
+          👁 {item?.views || item?.viewed || 0} views
+        </Text>
 
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.btn}
-            onPress={() => navigation.navigate("EditProduct", { product: item })}
+            onPress={() =>
+              navigation.navigate("EditProduct", { product: item })
+            }
           >
             <Icon name="create-outline" size={18} color="#007bff" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.btn} onPress={() => handleDelete(item?.id)}>
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={() => handleDelete(item?.id)}
+          >
             <Icon name="trash-outline" size={18} color="#dc3545" />
           </TouchableOpacity>
         </View>
@@ -109,6 +150,7 @@ export default function MyAdsScreen() {
     </View>
   );
 
+  // ✅ LOADING
   if (loading) {
     return (
       <View style={styles.loader}>
@@ -117,9 +159,11 @@ export default function MyAdsScreen() {
     );
   }
 
+  // ✅ MAIN UI
   return (
     <View style={styles.container}>
       <Text style={styles.header}>My Ads</Text>
+
       {ads.length === 0 ? (
         <Text>No ads found</Text>
       ) : (
@@ -134,6 +178,7 @@ export default function MyAdsScreen() {
   );
 }
 
+// ✅ STYLES
 const styles = StyleSheet.create({
   loader: {
     flex: 1,
@@ -162,6 +207,10 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     marginRight: 10,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   title: {
     fontSize: 15,
