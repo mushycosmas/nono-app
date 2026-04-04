@@ -87,60 +87,54 @@ export default function SellScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   // --- Submit product ---
- const handleSubmit = async () => {
-  if (!form.name || !form.price || !form.location) {
-    Alert.alert("Error", "Please fill all required fields");
-    return;
-  }
-
-  setSubmitting(true);
-
-  const formData = new FormData();
-  formData.append("name", form.name);
-  formData.append("price", form.price);
-  formData.append("product_description", form.description);
-  formData.append("location", form.location);
-  formData.append("status", form.status);
-  formData.append("category_id", form.category_id);
-  formData.append("subcategory_id", form.subcategory_id);
-  formData.append("user_id", "1");
-  formData.append("wholesale_tiers", JSON.stringify(wholesaleTiers));
-
-  newImages.forEach((img, idx) => {
-    formData.append("images[]", {
-      uri: img.uri,
-      type: "image/jpeg",
-      name: `image_${idx}.jpg`,
-    });
-  });
-
-  try {
-    const res = await fetch(`${BASE_URL}/api/ads`, {
-      method: "POST",
-      body: formData,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      Alert.alert("Error", data.message || "Failed to save product");
-    } else {
-      Alert.alert("Success", "Product saved successfully!");
-      // reset form
-      setForm(initialFormState);
-      setWholesaleTiers([{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
-      setNewImages([]);
-      // **use server response to update image URLs**
-      setImages(data.images || []); 
-      navigation.navigate("Myads");
+  const handleSubmit = async () => {
+    if (!form.name || !form.price || !form.location) {
+      Alert.alert("Error", "Please fill all required fields");
+      return;
     }
-  } catch (err) {
-    console.log(err);
-    Alert.alert("Error", "Something went wrong");
-  } finally {
-    setSubmitting(false);
-  }
-};
+
+    setSubmitting(true); // disable button
+
+    const formData = new FormData();
+    formData.append("name", form.name);
+    formData.append("price", form.price);
+    formData.append("product_description", form.description);
+    formData.append("location", form.location);
+    formData.append("status", form.status);
+    formData.append("category_id", form.category_id);
+    formData.append("subcategory_id", form.subcategory_id);
+    formData.append("user_id", "1");
+    formData.append("wholesale_tiers", JSON.stringify(wholesaleTiers));
+
+    newImages.forEach((img, idx) => {
+      formData.append("images[]", { uri: img.uri, type: "image/jpeg", name: `image_${idx}.jpg` });
+    });
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/ads`, {
+        method: "POST",
+        body: formData,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        Alert.alert("Error", data.message || "Failed to save product");
+      } else {
+        Alert.alert("Success", "Product saved successfully!");
+        setForm(initialFormState);
+        setNewImages([]);
+        setImages([]);
+        setWholesaleTiers([{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
+        navigation.navigate("MyAds"); // redirect to seller all ads
+      }
+    } catch (err) {
+      console.log(err);
+      Alert.alert("Error", "Something went wrong");
+    } finally {
+      setSubmitting(false); // enable button again
+    }
+  };
 
   return (
     <View style={styles.container}>

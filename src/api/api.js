@@ -1,12 +1,62 @@
-// src/api/api.js
-export const fetchCategories = async () => {
-  return [
-    { id: 1, name: "Electronics", icon: "phone-portrait" },
-    { id: 2, name: "Bags", icon: "bag" },
-    { id: 3, name: "Furniture", icon: "bed" },
-  ];
+const BASE_URL = "https://nono.co.tz";
+
+// ------------------ GENERIC REQUEST ------------------
+const request = async (url, options = {}) => {
+  try {
+    const method = options.method || "GET";
+
+    console.log("API CALL:", method, `${BASE_URL}${url}`);
+
+    const res = await fetch(`${BASE_URL}${url}`, {
+      method,
+      headers: {
+        Accept: "application/json",
+        ...(options.body instanceof FormData
+          ? {} // ⚠️ DO NOT set Content-Type for FormData
+          : { "Content-Type": "application/json" }),
+        ...options.headers,
+      },
+      body: options.body || null,
+    });
+
+    // Handle empty response safely
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      console.log("API ERROR RESPONSE:", data);
+      throw new Error(data?.message || `HTTP ${res.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.log("API ERROR:", error.message);
+    return null; // prevent app crash
+  }
 };
 
+
+// ------------------ CATEGORIES ------------------
+export const fetchCategories = async () => {
+  return await request("/api/categories", {
+    method: "GET",
+  });
+};
+
+
+// ------------------ SUBCATEGORIES ------------------
+export const fetchSubCategories = async () => {
+  return await request("/api/categories_sub", {
+    method: "GET",
+  });
+};
+
+
+// ------------------ LOCATIONS (STATIC) ------------------
 export const fetchLocations = async () => {
   return [
     { id: 1, name: "Dar es Salaam" },
@@ -15,44 +65,36 @@ export const fetchLocations = async () => {
   ];
 };
 
-// Mock fetchProducts
+
+// ------------------ PRODUCTS ------------------
 export const fetchProducts = async () => {
-  return [
-    {
-      id: 1,
-      name: "iPhone 14 Pro",
-      price: 1500000,
-      slug: "iphone-14-pro",
-      description: "Brand new iPhone 14 Pro with amazing camera.",
-      location: "Dar es Salaam",
-      postedTime: "2026-04-01T12:00:00Z",
-      category: { slug: "electronics" },
-      subcategory: { slug: "phones" },
-      images: [{ id: 1, ad_id: 1, path: "https://placekitten.com/300/200" }],
-    },
-    {
-      id: 2,
-      name: "MacBook Pro 16",
-      price: 3500000,
-      slug: "macbook-pro-16",
-      description: "Powerful MacBook Pro for developers.",
-      location: "Dodoma",
-      postedTime: "2026-03-30T08:00:00Z",
-      category: { slug: "electronics" },
-      subcategory: { slug: "laptops" },
-      images: [{ id: 2, ad_id: 2, path: "https://placekitten.com/301/200" }],
-    },
-    {
-      id: 3,
-      name: "Leather Backpack",
-      price: 120000,
-      slug: "leather-backpack",
-      description: "Stylish leather backpack for daily use.",
-      location: "Arusha",
-      postedTime: "2026-03-28T10:30:00Z",
-      category: { slug: "bags" },
-      subcategory: { slug: "backpacks" },
-      images: [{ id: 3, ad_id: 3, path: "https://placekitten.com/302/200" }],
-    },
-  ];
+  const res = await request("/api/ads/all"); // ✅ IMPORTANT FIX
+  return res.products || []; // ✅ FIX HERE
+};
+
+
+
+// ------------------ CREATE PRODUCT ------------------
+export const createProduct = async (formData) => {
+  return await request("/api/ads", {
+    method: "POST",
+    body: formData,
+  });
+};
+
+
+// ------------------ UPDATE PRODUCT ------------------
+export const updateProduct = async (id, formData) => {
+  return await request(`/api/seller/products/${id}`, {
+    method: "PUT",
+    body: formData,
+  });
+};
+
+
+// ------------------ DELETE PRODUCT ------------------
+export const deleteProduct = async (id) => {
+  return await request(`/api/seller/products/${id}`, {
+    method: "DELETE",
+  });
 };

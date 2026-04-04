@@ -126,7 +126,8 @@ export default function SellScreen() {
         setNewImages([]);
         setImages([]);
         setWholesaleTiers([{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
-        navigation.navigate("MyAds"); // redirect to seller all ads
+        
+        navigation.navigate("MyAds", { refresh: true });
       }
     } catch (err) {
       console.log(err);
