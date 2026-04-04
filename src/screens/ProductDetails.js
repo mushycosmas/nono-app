@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,9 @@ const BASE_URL = "https://nono.co.tz";
 
 export default function ProductDetails({ route }) {
   const { product } = route.params;
+
+  const flatListRef = useRef();
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   // ---------------- IMAGE FIX ----------------
   const getImageUrl = (path) => {
@@ -38,128 +41,140 @@ export default function ProductDetails({ route }) {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  // ---------------- WHATSAPP ----------------
-  const openWhatsApp = () => {
-    if (!product.user?.phone) return;
+  // ---------------- IMAGE RENDER ----------------
+  const renderImage = ({ item }) => (
+    <Image source={{ uri: getImageUrl(item.path) }} style={styles.image} />
+  );
 
-    const phone = product.user.phone.replace(/\s|\+/g, "");
-    const message = `Hi, I'm interested in your product ${product.name}`;
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-
-    Linking.openURL(url);
+  const scrollTo = (index) => {
+    if (index >= 0 && index < product.images.length) {
+      flatListRef.current.scrollToIndex({ index });
+      setCurrentIndex(index);
+    }
   };
 
-  // ---------------- IMAGE RENDER ----------------
-  const renderImage = ({ item }) => {
-    const uri = getImageUrl(item.path);
-
-    return (
-      <Image
-        source={{ uri }}
-        style={styles.productImage}
-        onError={() => console.log("Image failed:", uri)}
-      />
-    );
+  // ---------------- WHATSAPP ----------------
+  const openWhatsApp = () => {
+    const phone = product?.user?.phone?.replace(/\s|\+/g, "");
+    const message = `Hi, I'm interested in your product ${product.name}`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    Linking.openURL(url);
   };
 
   return (
     <ScrollView style={styles.container}>
-      {/* -------- IMAGE CAROUSEL -------- */}
-      {product.images?.length > 0 ? (
-        <FlatList
-          data={product.images}
-          renderItem={renderImage}
-          keyExtractor={(item) => item.id.toString()}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        <View style={[styles.productImage, styles.noImage]}>
-          <Text>No Image</Text>
-        </View>
-      )}
+      {/* ---------------- IMAGE SLIDER ---------------- */}
+      <View>
+        {product.images?.length > 0 ? (
+          <>
+            <FlatList
+              ref={flatListRef}
+              data={product.images}
+              renderItem={renderImage}
+              keyExtractor={(item) => item.id.toString()}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(
+                  e.nativeEvent.contentOffset.x / width
+                );
+                setCurrentIndex(index);
+              }}
+            />
 
-      {/* -------- PRODUCT INFO -------- */}
-      <View style={styles.card}>
-        <Text style={styles.productName}>{product.name}</Text>
+            {/* LEFT ARROW */}
+            {currentIndex > 0 && (
+              <TouchableOpacity
+                style={[styles.arrow, { left: 10 }]}
+                onPress={() => scrollTo(currentIndex - 1)}
+              >
+                <Icon name="chevron-back" size={28} color="#fff" />
+              </TouchableOpacity>
+            )}
 
-        <Text style={styles.productPrice}>
-          Tsh {Number(product.price).toLocaleString()}
+            {/* RIGHT ARROW */}
+            {currentIndex < product.images.length - 1 && (
+              <TouchableOpacity
+                style={[styles.arrow, { right: 10 }]}
+                onPress={() => scrollTo(currentIndex + 1)}
+              >
+                <Icon name="chevron-forward" size={28} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+          <View style={[styles.image, styles.noImage]}>
+            <Text>No Image</Text>
+          </View>
+        )}
+      </View>
+
+      {/* ---------------- DETAILS ---------------- */}
+      <View style={styles.details}>
+        <Text style={styles.name}>{product.name}</Text>
+
+        <Text style={styles.price}>
+          Tsh {Number(product.price || 0).toLocaleString()}
         </Text>
 
         {/* Category */}
         <Text style={styles.meta}>
-          📦 {product.category?.name} → {product.subcategory?.name}
+          {product.category?.name} • {product.subcategory?.name}
         </Text>
 
-        {/* Location & Time */}
+        {/* Location + Time */}
         <View style={styles.row}>
           <Text style={styles.meta}>
-            <Icon name="location-sharp" size={14} />{" "}
-            {product.location}
+            <Icon name="location-sharp" size={14} /> {product.location}
           </Text>
-
           <Text style={styles.meta}>
             {getTimeAgo(product.created_at)}
           </Text>
         </View>
 
         {/* Description */}
-        {product.description && (
-          <Text style={styles.description}>
-            {product.description.replace(/<[^>]+>/g, "")}
-          </Text>
-        )}
-      </View>
-
-      {/* -------- WHOLESALE TIERS -------- */}
-      {product.wholesale_tiers?.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Wholesale Prices</Text>
-
-          {product.wholesale_tiers.map((tier) => (
-            <View key={tier.id} style={styles.tierRow}>
-              <Text>
-                {tier.min_qty} - {tier.max_qty} pcs
-              </Text>
-              <Text style={styles.tierPrice}>
-                Tsh {Number(tier.whole_seller_price).toLocaleString()}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* -------- SELLER CARD -------- */}
-      <View style={styles.card}>
-        <Image
-          source={{
-            uri:
-              product.user?.avatar_url ||
-              "https://placehold.co/100x100",
-          }}
-          style={styles.avatar}
-        />
-
-        <Text style={styles.sellerName}>
-          {product.user?.name || "Unknown Seller"}
+        <Text style={styles.description}>
+          {product.description || product.product_description}
         </Text>
 
-        <Text style={styles.verified}>Verified Seller</Text>
+        {/* ---------------- WHOLESALE TIERS ---------------- */}
+        {product.wholesale_tiers?.length > 0 && (
+          <View style={styles.tiers}>
+            <Text style={styles.sectionTitle}>Wholesale Prices</Text>
 
-        <View style={styles.row}>
-          <Icon name="call" size={16} />
-          <Text style={styles.phone}>
+            {product.wholesale_tiers.map((tier) => (
+              <View key={tier.id} style={styles.tierRow}>
+                <Text>
+                  {tier.min_qty} - {tier.max_qty} pcs
+                </Text>
+                <Text style={styles.tierPrice}>
+                  Tsh {Number(tier.whole_seller_price).toLocaleString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ---------------- SELLER CARD ---------------- */}
+        <View style={styles.sellerCard}>
+          <View style={styles.avatar}>
+            <Icon name="person" size={40} color="#fff" />
+          </View>
+
+          <Text style={styles.sellerName}>
+            {product.user?.name || "Unknown Seller"}
+          </Text>
+
+          <Text style={styles.sellerPhone}>
             {product.user?.phone || "N/A"}
           </Text>
-        </View>
 
-        {/* WhatsApp Button */}
-        <TouchableOpacity style={styles.whatsappBtn} onPress={openWhatsApp}>
-          <Icon name="logo-whatsapp" size={18} color="#fff" />
-          <Text style={styles.whatsappText}>Chat via WhatsApp</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.whatsappBtn} onPress={openWhatsApp}>
+            <Icon name="logo-whatsapp" size={18} color="#fff" />
+            <Text style={styles.whatsappText}>Chat via WhatsApp</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
@@ -169,108 +184,83 @@ export default function ProductDetails({ route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f5f5" },
 
-  productImage: {
-    width: width,
-    height: 300,
-    resizeMode: "cover",
-  },
-
+  image: { width, height: 300 },
   noImage: {
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#eee",
   },
 
-  card: {
-    backgroundColor: "#fff",
-    margin: 10,
-    padding: 15,
-    borderRadius: 12,
-    elevation: 3,
+  arrow: {
+    position: "absolute",
+    top: "45%",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 8,
+    borderRadius: 20,
   },
 
-  productName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
+  details: { padding: 15 },
 
-  productPrice: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#28a745",
-    marginBottom: 8,
-  },
+  name: { fontSize: 20, fontWeight: "bold" },
+  price: { fontSize: 18, color: "#28a745", marginVertical: 5 },
 
-  meta: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 5,
-  },
+  meta: { fontSize: 12, color: "#666" },
 
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    marginVertical: 5,
   },
 
-  description: {
-    marginTop: 10,
-    fontSize: 14,
-    color: "#444",
-    lineHeight: 20,
+  description: { marginTop: 10, fontSize: 14, color: "#444" },
+
+  tiers: {
+    marginTop: 15,
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 10,
   },
 
   sectionTitle: {
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 5,
   },
 
   tierRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 5,
-    borderBottomWidth: 0.5,
-    borderColor: "#ddd",
+    paddingVertical: 4,
   },
 
-  tierPrice: {
-    fontWeight: "bold",
-    color: "#198754",
+  tierPrice: { color: "#28a745", fontWeight: "bold" },
+
+  sellerCard: {
+    marginTop: 20,
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
   },
 
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    alignSelf: "center",
+    backgroundColor: "#28a745",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 10,
   },
 
-  sellerName: {
-    textAlign: "center",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-
-  verified: {
-    textAlign: "center",
-    color: "gray",
-    marginBottom: 10,
-  },
-
-  phone: {
-    marginLeft: 5,
-  },
+  sellerName: { fontWeight: "bold", fontSize: 16 },
+  sellerPhone: { color: "#666", marginBottom: 10 },
 
   whatsappBtn: {
     flexDirection: "row",
     backgroundColor: "#25D366",
-    padding: 12,
-    borderRadius: 10,
-    justifyContent: "center",
+    padding: 10,
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
   },
 
   whatsappText: {
