@@ -1,0 +1,293 @@
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  FlatList,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import Icon from "react-native-vector-icons/Ionicons";
+import * as ImagePicker from "expo-image-picker";
+
+const BASE_URL = "https://nono.co.tz";
+
+export default function EditProductScreen() {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const { product } = route.params;
+
+  // --- Helper ---
+  const getImageUrl = (img) => {
+    if (!img) return "https://placehold.co/100x100";
+    if (img.startsWith("http")) return img;
+    return `${BASE_URL}${img}`;
+  };
+
+  const getRelativePath = (url) => {
+    return url.replace(BASE_URL, "");
+  };
+
+  // --- Form ---
+  const [form, setForm] = useState({
+    name: product.name || "",
+    price: product.price?.toString() || "",
+    description: product.product_description || "",
+    location: product.location || "",
+    status: product.status || "active",
+    category_id: product.category_id?.toString() || "1",
+    subcategory_id: product.subcategory_id?.toString() || "11",
+  });
+
+  // --- Images ---
+  const [images, setImages] = useState(
+    (product.images || []).map((img) => getImageUrl(img))
+  );
+  const [newImages, setNewImages] = useState([]);
+
+  // --- Loading state ---
+  const [loading, setLoading] = useState(false);
+
+  // --- Categories ---
+  const staticCategories = [
+    {
+      id: "1",
+      name: "Electronics",
+      subcategories: [
+        { id: "11", name: "Laptops" },
+        { id: "12", name: "Phones" },
+      ],
+    },
+    {
+      id: "2",
+      name: "Fashion",
+      subcategories: [
+        { id: "21", name: "Shirts" },
+        { id: "22", name: "Shoes" },
+      ],
+    },
+  ];
+
+  const [filteredSubcategories, setFilteredSubcategories] = useState(
+    staticCategories[0].subcategories
+  );
+
+  useEffect(() => {
+    const category = staticCategories.find((c) => c.id === form.category_id);
+    if (category) {
+      setFilteredSubcategories(category.subcategories);
+    }
+  }, [form.category_id]);
+
+  // --- Wholesale ---
+  const [wholesaleTiers, setWholesaleTiers] = useState(
+    product.wholesale_tiers || [
+      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+    ]
+  );
+
+  const updateTier = (index, field, value) => {
+    const updated = [...wholesaleTiers];
+    updated[index][field] =
+      field === "whole_seller_price" ? value : Number(value);
+    setWholesaleTiers(updated);
+  };
+
+  const addTier = () =>
+    setWholesaleTiers((prev) => [
+      ...prev,
+      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+    ]);
+
+  const removeTier = (index) =>
+    setWholesaleTiers((prev) => prev.filter((_, i) => i !== index));
+
+  // --- Image Picker (SAFE FIX) ---
+  const pickImages = async () => {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Permission required");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, // fallback (works)
+      allowsMultipleSelection: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setNewImages((prev) => [...prev, ...result.assets]);
+    }
+  };
+
+  const removeImage = (uri) =>
+    setImages((prev) => prev.filter((i) => i !== uri));
+
+  const removeNewImage = (index) =>
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
+
+  // --- UPDATE API ---
+  const handleUpdate = async () => {
+    if (loading) return; // prevent multi-submit
+
+    if (!form.name || !form.price || !form.location) {
+      Alert.alert("Error", "Fill all required fields");
+      return;
+    }
+
+    setLoading(true);
+
+    const formData = new FormData();
+
+    formData.append("name", form.name);
+    formData.append("price", form.price);
+    formData.append("product_description", form.description);
+    formData.append("location", form.location);
+    formData.append("status", form.status);
+    formData.append("subcategory_id", form.subcategory_id);
+    formData.append("wholesale_tiers", JSON.stringify(wholesaleTiers));
+
+    // ✅ EXISTING IMAGES (IMPORTANT)
+    images.forEach((img) => {
+      formData.append("existingImages", getRelativePath(img));
+    });
+
+    // ✅ NEW IMAGES
+    newImages.forEach((img, idx) => {
+      formData.append("newImages[]", {
+        uri: img.uri,
+        type: "image/jpeg",
+        name: `image_${idx}.jpg`,
+      });
+    });
+
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/seller/products/${product.id}`,
+        {
+          method: "PUT",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        Alert.alert("Error", data.message || "Update failed");
+      } else {
+        Alert.alert("Success", "Product updated");
+
+        // reset + redirect
+        navigation.goBack();
+      }
+    } catch (err) {
+      console.log(err);
+      Alert.alert("Error", "Network error");
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView>
+
+        <Text style={styles.title}>Edit Product</Text>
+
+        {/* Images */}
+        <ScrollView horizontal>
+          {images.map((img, i) => (
+            <View key={i} style={styles.imageWrapper}>
+              <Image source={{ uri: img }} style={styles.image} />
+              <TouchableOpacity onPress={() => removeImage(img)}>
+                <Icon name="close-circle" size={22} color="red" />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          {newImages.map((img, i) => (
+            <View key={i} style={styles.imageWrapper}>
+              <Image source={{ uri: img.uri }} style={styles.image} />
+              <TouchableOpacity onPress={() => removeNewImage(i)}>
+                <Icon name="close-circle" size={22} color="red" />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity onPress={pickImages}>
+            <Icon name="add-circle-outline" size={40} color="green" />
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Inputs */}
+        <TextInput
+          style={styles.input}
+          value={form.name}
+          onChangeText={(t) => setForm({ ...form, name: t })}
+          placeholder="Name"
+        />
+
+        <TextInput
+          style={styles.input}
+          value={form.price}
+          keyboardType="numeric"
+          onChangeText={(t) => setForm({ ...form, price: t })}
+          placeholder="Price"
+        />
+
+        <TextInput
+          style={styles.input}
+          value={form.location}
+          onChangeText={(t) => setForm({ ...form, location: t })}
+          placeholder="Location"
+        />
+
+        {/* Button */}
+        <TouchableOpacity
+          style={[styles.btn, loading && { backgroundColor: "#999" }]}
+          onPress={handleUpdate}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>Update Product</Text>
+          )}
+        </TouchableOpacity>
+
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 15 },
+  title: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
+  input: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  btn: {
+    backgroundColor: "#28a745",
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 20,
+    alignItems: "center",
+  },
+  btnText: { color: "#fff", fontWeight: "bold" },
+  imageWrapper: { marginRight: 10 },
+  image: { width: 100, height: 100, borderRadius: 8 },
+});

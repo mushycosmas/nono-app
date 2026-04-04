@@ -14,21 +14,23 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 
-const BASE_URL = "https://nono.co.tz"; // backend domain
+const BASE_URL = "https://nono.co.tz";
 
 export default function EditProductScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { product } = route.params;
 
-  // --- Helper ---
+  // ---------- HELPERS ----------
   const getImageUrl = (img) => {
     if (!img) return "https://placehold.co/100x100";
     if (img.startsWith("http")) return img;
     return `${BASE_URL}${img}`;
   };
 
-  // --- Form State ---
+  const getRelativePath = (url) => url.replace(BASE_URL, "");
+
+  // ---------- FORM ----------
   const [form, setForm] = useState({
     name: product.name || "",
     price: product.price?.toString() || "",
@@ -39,13 +41,17 @@ export default function EditProductScreen() {
     subcategory_id: product.subcategory_id?.toString() || "11",
   });
 
-  // --- Images ---
+  // ---------- IMAGES ----------
   const [images, setImages] = useState(
     (product.images || []).map((img) => getImageUrl(img))
   );
   const [newImages, setNewImages] = useState([]);
 
-  // --- Categories ---
+  // ---------- LOADING ----------
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  // ---------- CATEGORIES ----------
   const staticCategories = [
     {
       id: "1",
@@ -65,23 +71,18 @@ export default function EditProductScreen() {
     },
   ];
 
-  const [filteredSubcategories, setFilteredSubcategories] = useState(
-    staticCategories.find((c) => c.id === form.category_id)?.subcategories || []
-  );
+  const [filteredSubcategories, setFilteredSubcategories] = useState([]);
 
   useEffect(() => {
-    const category = staticCategories.find((c) => c.id === form.category_id);
-    if (category) {
-      setFilteredSubcategories(category.subcategories);
-      if (!category.subcategories.some((s) => s.id === form.subcategory_id)) {
-        setForm({ ...form, subcategory_id: category.subcategories[0].id });
-      }
-    }
+    const cat = staticCategories.find((c) => c.id === form.category_id);
+    if (cat) setFilteredSubcategories(cat.subcategories);
   }, [form.category_id]);
 
-  // --- Wholesale Tiers ---
+  // ---------- WHOLESALE ----------
   const [wholesaleTiers, setWholesaleTiers] = useState(
-    product.wholesale_tiers || [{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]
+    product.wholesale_tiers || [
+      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+    ]
   );
 
   const addTier = () =>
@@ -92,102 +93,160 @@ export default function EditProductScreen() {
 
   const updateTier = (index, field, value) => {
     const updated = [...wholesaleTiers];
-    updated[index] = {
-      ...updated[index],
-      [field]: field === "whole_seller_price" ? value : Number(value),
-    };
+    updated[index][field] =
+      field === "whole_seller_price" ? value : Number(value);
     setWholesaleTiers(updated);
   };
 
   const removeTier = (index) =>
     setWholesaleTiers((prev) => prev.filter((_, i) => i !== index));
 
-  // --- Image Picker ---
-  const addNewImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  // ---------- IMAGE PICKER ----------
+  const pickImages = async () => {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (!permission.granted) {
-      Alert.alert("Permission required", "Please allow access to gallery");
+      Alert.alert("Permission required");
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.7,
     });
+
     if (!result.canceled) {
       setNewImages((prev) => [...prev, ...result.assets]);
     }
   };
 
-  const removeImage = (uri) => setImages((prev) => prev.filter((i) => i !== uri));
+  const removeImage = (uri) =>
+    setImages((prev) => prev.filter((i) => i !== uri));
+
   const removeNewImage = (index) =>
     setNewImages((prev) => prev.filter((_, i) => i !== index));
 
-  // --- Update Product ---
-  const handleUpdate = () => {
+  // ---------- SUBMIT ----------
+  const handleUpdate = async () => {
+    if (loading) return;
+
     if (!form.name || !form.price || !form.location) {
-      Alert.alert("Please fill all required fields");
+      Alert.alert("Error", "Fill all required fields");
       return;
     }
 
-    const updatedProduct = {
-      ...form,
-      price: Number(form.price),
-      wholesale_tiers: wholesaleTiers,
-      images: [...images, ...newImages.map((img) => img.uri)],
+    setLoading(true);
+    setProgress(0);
+
+    const formData = new FormData();
+
+    formData.append("name", form.name);
+    formData.append("price", form.price);
+    formData.append("product_description", form.description);
+    formData.append("location", form.location);
+    formData.append("status", form.status);
+    formData.append("subcategory_id", form.subcategory_id);
+    formData.append("wholesale_tiers", JSON.stringify(wholesaleTiers));
+
+    // existing images
+    images.forEach((img) => {
+      formData.append("existingImages", getRelativePath(img));
+    });
+
+    // new images
+    newImages.forEach((img, idx) => {
+      formData.append("newImages[]", {
+        uri: img.uri,
+        type: "image/jpeg",
+        name: `image_${idx}.jpg`,
+      });
+    });
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.open(
+      "PUT",
+      `${BASE_URL}/api/seller/products/${product.id}`
+    );
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setProgress(percent);
+      }
     };
 
-    console.log("Updated product:", updatedProduct);
-    // TODO: call your API here
-    navigation.goBack();
+    xhr.onload = () => {
+      setLoading(false);
+
+      if (xhr.status === 200) {
+        Alert.alert("Success", "Product updated");
+
+        // 🔥 AUTO REFRESH + REDIRECT
+        navigation.navigate("MyAds", {
+          refresh: true,
+        });
+      } else {
+        Alert.alert("Error", "Update failed");
+      }
+    };
+
+    xhr.onerror = () => {
+      setLoading(false);
+      Alert.alert("Error", "Upload failed");
+    };
+
+    xhr.send(formData);
   };
 
   return (
     <View style={styles.container}>
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+
         <Text style={styles.title}>Edit Product</Text>
 
-        {/* Existing Images */}
-        <Text style={styles.label}>Existing Images</Text>
-        <ScrollView horizontal>
-          {images.map((img, idx) => (
-            <View key={idx} style={styles.imageWrapper}>
-              <Image source={{ uri: img }} style={styles.image} />
-              <TouchableOpacity
-                style={styles.removeIcon}
-                onPress={() => removeImage(img)}
-              >
-                <Icon name="close-circle" size={24} color="#dc3545" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
+        {/* PROGRESS */}
+        {loading && (
+          <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, { width: `${progress}%` }]} />
+            <Text style={styles.progressText}>{progress}%</Text>
+          </View>
+        )}
 
-        {/* New Images */}
-        <Text style={styles.label}>New Images</Text>
+        {/* IMAGES */}
+        <Text style={styles.label}>Images</Text>
         <ScrollView horizontal>
-          {newImages.map((img, idx) => (
-            <View key={idx} style={styles.imageWrapper}>
-              <Image source={{ uri: img.uri }} style={styles.image} />
-              <TouchableOpacity
-                style={styles.removeIcon}
-                onPress={() => removeNewImage(idx)}
-              >
-                <Icon name="close-circle" size={24} color="#dc3545" />
+          {images.map((img, i) => (
+            <View key={i} style={styles.imageWrapper}>
+              <Image source={{ uri: img }} style={styles.image} />
+              <TouchableOpacity onPress={() => removeImage(img)}>
+                <Icon name="close-circle" size={22} color="red" />
               </TouchableOpacity>
             </View>
           ))}
-          <TouchableOpacity style={styles.addImageBtn} onPress={addNewImage}>
-            <Icon name="add-circle-outline" size={40} color="#28a745" />
+
+          {newImages.map((img, i) => (
+            <View key={i} style={styles.imageWrapper}>
+              <Image source={{ uri: img.uri }} style={styles.image} />
+              <TouchableOpacity onPress={() => removeNewImage(i)}>
+                <Icon name="close-circle" size={22} color="red" />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity onPress={pickImages}>
+            <Icon name="add-circle-outline" size={40} color="green" />
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Form Fields */}
+        {/* FORM */}
         <Text style={styles.label}>Name</Text>
         <TextInput
           style={styles.input}
           value={form.name}
-          onChangeText={(text) => setForm({ ...form, name: text })}
+          onChangeText={(t) => setForm({ ...form, name: t })}
         />
 
         <Text style={styles.label}>Price</Text>
@@ -195,7 +254,7 @@ export default function EditProductScreen() {
           style={styles.input}
           value={form.price}
           keyboardType="numeric"
-          onChangeText={(text) => setForm({ ...form, price: text })}
+          onChangeText={(t) => setForm({ ...form, price: t })}
         />
 
         <Text style={styles.label}>Description</Text>
@@ -203,17 +262,17 @@ export default function EditProductScreen() {
           style={[styles.input, { height: 100 }]}
           multiline
           value={form.description}
-          onChangeText={(text) => setForm({ ...form, description: text })}
+          onChangeText={(t) => setForm({ ...form, description: t })}
         />
 
         <Text style={styles.label}>Location</Text>
         <TextInput
           style={styles.input}
           value={form.location}
-          onChangeText={(text) => setForm({ ...form, location: text })}
+          onChangeText={(t) => setForm({ ...form, location: t })}
         />
 
-        {/* Status */}
+        {/* STATUS */}
         <Text style={styles.label}>Status</Text>
         <View style={{ flexDirection: "row" }}>
           {["active", "inactive"].map((s) => (
@@ -230,34 +289,42 @@ export default function EditProductScreen() {
           ))}
         </View>
 
-        {/* Category */}
+        {/* CATEGORY */}
         <Text style={styles.label}>Category</Text>
         {staticCategories.map((c) => (
           <TouchableOpacity
             key={c.id}
-            style={[styles.option, form.category_id === c.id && styles.optionSelected]}
-            onPress={() => setForm({ ...form, category_id: c.id })}
+            style={[
+              styles.option,
+              form.category_id === c.id && styles.optionSelected,
+            ]}
+            onPress={() =>
+              setForm({ ...form, category_id: c.id })
+            }
           >
             <Text>{c.name}</Text>
           </TouchableOpacity>
         ))}
 
-        {/* Subcategory */}
+        {/* SUBCATEGORY */}
         <Text style={styles.label}>Subcategory</Text>
         {filteredSubcategories.map((s) => (
           <TouchableOpacity
             key={s.id}
             style={[
               styles.option,
-              form.subcategory_id === s.id && styles.optionSelected,
+              form.subcategory_id === s.id &&
+                styles.optionSelected,
             ]}
-            onPress={() => setForm({ ...form, subcategory_id: s.id })}
+            onPress={() =>
+              setForm({ ...form, subcategory_id: s.id })
+            }
           >
             <Text>{s.name}</Text>
           </TouchableOpacity>
         ))}
 
-        {/* Wholesale Tiers */}
+        {/* WHOLESALE */}
         <Text style={styles.label}>Wholesale Tiers</Text>
         <FlatList
           data={wholesaleTiers}
@@ -266,40 +333,51 @@ export default function EditProductScreen() {
           renderItem={({ item, index }) => (
             <View style={styles.tierRow}>
               <TextInput
+                style={styles.tierInput}
                 value={item.min_qty.toString()}
-                onChangeText={(v) => updateTier(index, "min_qty", v)}
+                onChangeText={(v) =>
+                  updateTier(index, "min_qty", v)
+                }
                 placeholder="Min"
-                keyboardType="numeric"
-                style={styles.tierInput}
               />
               <TextInput
+                style={styles.tierInput}
                 value={item.max_qty.toString()}
-                onChangeText={(v) => updateTier(index, "max_qty", v)}
+                onChangeText={(v) =>
+                  updateTier(index, "max_qty", v)
+                }
                 placeholder="Max"
-                keyboardType="numeric"
-                style={styles.tierInput}
               />
               <TextInput
-                value={item.whole_seller_price}
-                onChangeText={(v) => updateTier(index, "whole_seller_price", v)}
-                placeholder="Price"
-                keyboardType="numeric"
                 style={styles.tierInput}
+                value={item.whole_seller_price}
+                onChangeText={(v) =>
+                  updateTier(index, "whole_seller_price", v)
+                }
+                placeholder="Price"
               />
               <TouchableOpacity onPress={() => removeTier(index)}>
-                <Icon name="close-circle" size={24} color="#dc3545" />
+                <Icon name="close-circle" size={22} color="red" />
               </TouchableOpacity>
             </View>
           )}
         />
-        <TouchableOpacity style={styles.addTierBtn} onPress={addTier}>
-          <Text style={{ color: "#28a745" }}>+ Add Tier</Text>
+
+        <TouchableOpacity onPress={addTier}>
+          <Text style={{ color: "green" }}>+ Add Tier</Text>
         </TouchableOpacity>
+
       </ScrollView>
 
-      {/* Fixed Update Button */}
-      <TouchableOpacity style={styles.btn} onPress={handleUpdate}>
-        <Text style={styles.btnText}>Update Product</Text>
+      {/* BUTTON */}
+      <TouchableOpacity
+        style={[styles.btn, loading && { backgroundColor: "#999" }]}
+        onPress={handleUpdate}
+        disabled={loading}
+      >
+        <Text style={styles.btnText}>
+          {loading ? `Uploading ${progress}%` : "Update Product"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -307,24 +385,61 @@ export default function EditProductScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 15, backgroundColor: "#f5f5f5" },
-  title: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
+  title: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
   label: { marginTop: 10, fontWeight: "600" },
-  input: { backgroundColor: "#fff", padding: 10, borderRadius: 8, marginTop: 5 },
+
+  input: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 5,
+  },
+
   btn: {
     backgroundColor: "#28a745",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
-    marginTop: 10,
   },
+
   btnText: { color: "#fff", fontWeight: "bold" },
-  imageWrapper: { marginRight: 10, position: "relative" },
+
+  imageWrapper: { marginRight: 10 },
   image: { width: 100, height: 100, borderRadius: 8 },
-  removeIcon: { position: "absolute", top: -5, right: -5 },
-  addImageBtn: { justifyContent: "center", alignItems: "center", marginLeft: 10 },
-  option: { padding: 10, backgroundColor: "#fff", borderRadius: 8, marginTop: 5 },
+
+  option: {
+    padding: 10,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    marginTop: 5,
+  },
+
   optionSelected: { backgroundColor: "#ddd" },
-  tierRow: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  tierInput: { borderWidth: 1, flex: 1, marginRight: 4, padding: 4, borderRadius: 4 },
-  addTierBtn: { marginTop: 5, marginBottom: 10 },
+
+  tierRow: { flexDirection: "row", alignItems: "center" },
+  tierInput: {
+    borderWidth: 1,
+    flex: 1,
+    marginRight: 5,
+    padding: 5,
+    borderRadius: 5,
+  },
+
+  progressContainer: {
+    height: 25,
+    backgroundColor: "#ddd",
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#28a745",
+  },
+
+  progressText: {
+    position: "absolute",
+    alignSelf: "center",
+    fontWeight: "bold",
+  },
 });
