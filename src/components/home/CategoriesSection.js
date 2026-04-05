@@ -1,4 +1,3 @@
-// src/components/home/CategoriesSection.js
 import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import CategoryCard from '../CategoryCard';
@@ -19,8 +18,10 @@ export default function CategoriesSection({ categories, navigation }) {
             name={item.name}
             icon={item.icon}
             onPress={() =>
-              navigation.navigate('CategoryProducts', {
+              navigation.navigate('SubcategoryList', {
                 categoryId: item.id,
+                categoryName: item.name,
+                subcategories: item.subcategories || [],
               })
             }
           />

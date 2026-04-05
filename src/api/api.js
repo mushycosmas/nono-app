@@ -19,7 +19,6 @@ const request = async (url, options = {}) => {
       body: options.body || null,
     });
 
-    // Handle empty response safely
     let data;
     try {
       data = await res.json();
@@ -39,22 +38,38 @@ const request = async (url, options = {}) => {
   }
 };
 
+// ------------------ CACHE ------------------
+const cache = {
+  categories: null,
+  subcategories: null,
+};
 
-// ------------------ CATEGORIES ------------------
+// ------------------ CATEGORIES + SUBCATEGORIES ------------------
 export const fetchCategories = async () => {
-  return await request("/api/categories", {
-    method: "GET",
+  if (cache.categories && cache.subcategories) {
+    return cache.categories.map(cat => ({
+      ...cat,
+      subcategories: cache.subcategories[cat.id] || [],
+    }));
+  }
+
+  const data = await request("/api/all_categories", { method: "GET" });
+  if (!data) return [];
+
+  // Split categories and subcategories
+  cache.categories = data.map(cat => ({
+    id: cat.id,
+    name: cat.name,
+    icon: cat.icon,
+  }));
+
+  cache.subcategories = {};
+  data.forEach(cat => {
+    cache.subcategories[cat.id] = cat.subcategories || [];
   });
+
+  return data; // already includes subcategories
 };
-
-
-// ------------------ SUBCATEGORIES ------------------
-export const fetchSubCategories = async () => {
-  return await request("/api/categories_sub", {
-    method: "GET",
-  });
-};
-
 
 // ------------------ LOCATIONS (STATIC) ------------------
 export const fetchLocations = async () => {
@@ -65,15 +80,8 @@ export const fetchLocations = async () => {
   ];
 };
 
-
 // ------------------ PRODUCTS ------------------
-export const fetchProducts = async (
-  page: number = 1,
-  pageSize: number = 12,
-  search: string = "",
-  subcategoryId: string = ""
-) => {
-  // Ensure page and pageSize are numbers
+export const fetchProducts = async (page = 1, pageSize = 12, search = "", subcategoryId = "") => {
   const pageNum = Number(page) || 1;
   const sizeNum = Number(pageSize) || 12;
 
@@ -84,37 +92,24 @@ export const fetchProducts = async (
     subcategory_id: subcategoryId || "",
   });
 
-  // Call your API using request function
   const res = await request(`/api/ads/all?${query.toString()}`);
-
   return {
     products: res?.products || [],
     total: res?.total || 0,
   };
 };
 
-
 // ------------------ CREATE PRODUCT ------------------
 export const createProduct = async (formData) => {
-  return await request("/api/ads", {
-    method: "POST",
-    body: formData,
-  });
+  return await request("/api/ads", { method: "POST", body: formData });
 };
-
 
 // ------------------ UPDATE PRODUCT ------------------
 export const updateProduct = async (id, formData) => {
-  return await request(`/api/seller/products/${id}`, {
-    method: "PUT",
-    body: formData,
-  });
+  return await request(`/api/seller/products/${id}`, { method: "PUT", body: formData });
 };
-
 
 // ------------------ DELETE PRODUCT ------------------
 export const deleteProduct = async (id) => {
-  return await request(`/api/seller/products/${id}`, {
-    method: "DELETE",
-  });
+  return await request(`/api/seller/products/${id}`, { method: "DELETE" });
 };
