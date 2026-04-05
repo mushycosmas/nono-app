@@ -1,11 +1,20 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 export default function CategoryCard({ name, icon, onPress }) {
   return (
     <TouchableOpacity onPress={onPress} style={styles.card}>
-      <Image source={{ uri: icon }} style={styles.icon} />
-      <Text style={styles.name}>{name}</Text>
+      {icon ? (
+        <Icon name={icon} size={36} color="#28a745" style={styles.icon} />
+      ) : (
+        <View style={[styles.icon, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text>?</Text>
+        </View>
+      )}
+      <Text style={styles.name} numberOfLines={2}>
+        {name}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -28,8 +37,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   icon: {
-    width: 50,
-    height: 50,
     marginBottom: 8,
   },
   name: {
