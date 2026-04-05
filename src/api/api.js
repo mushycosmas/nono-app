@@ -67,9 +67,19 @@ export const fetchLocations = async () => {
 
 
 // ------------------ PRODUCTS ------------------
-export const fetchProducts = async () => {
-  const res = await request("/api/ads/all"); // ✅ IMPORTANT FIX
-  return res.products || []; // ✅ FIX HERE
+export const fetchProducts = async (page = 1, pageSize = 12, search = "", subcategoryId = "") => {
+  const query = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+    search,
+    subcategory_id: subcategoryId,
+  });
+
+  const res = await request(`/api/ads/all?${query.toString()}`); // Use same request function
+  return {
+    products: res?.products || [],
+    total: res?.total || 0,
+  };
 };
 
 
