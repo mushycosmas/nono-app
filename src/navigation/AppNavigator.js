@@ -8,6 +8,8 @@ import ProductsScreen from "../screens/ProductsScreen";
 import MyAdsScreen from "../screens/MyAdsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import EditProductScreen from "../screens/EditProductScreen";
+import SearchResults from "../screens/SearchResults";
+
 
 
 const Stack = createNativeStackNavigator();
@@ -40,6 +42,7 @@ export default function AppNavigator() {
 
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="EditProduct" component={EditProductScreen} />
+         <Stack.Screen name="SearchResults" component={SearchResults} />
       </Stack.Navigator>
     </NavigationContainer>
   );

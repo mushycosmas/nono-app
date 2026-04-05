@@ -28,6 +28,7 @@ export default function HomeScreen({ navigation }) {
     handleRefresh,
   } = useHomeData();
 
+  // Navigate to search results
   const handleSearch = (query) => {
     navigation.navigate("SearchResults", {
       query,
@@ -35,6 +36,7 @@ export default function HomeScreen({ navigation }) {
     });
   };
 
+  // Render each product
   const renderProduct = useCallback(
     ({ item }) => <ProductItem item={item} navigation={navigation} />,
     [navigation]
@@ -54,7 +56,7 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar backgroundColor="#28a745" barStyle="light-content" />
 
-      {/* Fixed Search Bar */}
+      {/* Quick Search Bar */}
       <HeaderSearch
         locations={locations}
         selectedLocation={selectedLocation}
@@ -67,13 +69,14 @@ export default function HomeScreen({ navigation }) {
         data={products}
         keyExtractor={keyExtractor}
         renderItem={renderProduct}
-        numColumns={2} // 2 columns for product grid
+        numColumns={2} // 2-column grid
         showsVerticalScrollIndicator={false}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         refreshing={refreshing}
         onRefresh={handleRefresh}
         contentContainerStyle={styles.listContainer}
+        columnWrapperStyle={styles.columnWrapper} // spacing between product cards
         ListHeaderComponent={
           <>
             {/* Quick Actions */}
@@ -89,6 +92,7 @@ export default function HomeScreen({ navigation }) {
         }
       />
 
+      {/* Loading indicator when fetching more */}
       {loading && products.length > 0 && (
         <View style={styles.loadingMore}>
           <ActivityIndicator size="small" color="#28a745" />
@@ -109,7 +113,12 @@ const styles = StyleSheet.create({
   },
 
   sectionSpacing: {
-    marginBottom: 20, // <-- space between sections
+    marginBottom: 20, // space between Quick Actions / Categories
+  },
+
+  columnWrapper: {
+    justifyContent: "space-between", // space between product cards in row
+    marginBottom: 15, // vertical space between rows
   },
 
   loadingMore: {

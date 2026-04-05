@@ -67,21 +67,31 @@ export const fetchLocations = async () => {
 
 
 // ------------------ PRODUCTS ------------------
-export const fetchProducts = async (page = 1, pageSize = 12, search = "", subcategoryId = "") => {
+export const fetchProducts = async (
+  page: number = 1,
+  pageSize: number = 12,
+  search: string = "",
+  subcategoryId: string = ""
+) => {
+  // Ensure page and pageSize are numbers
+  const pageNum = Number(page) || 1;
+  const sizeNum = Number(pageSize) || 12;
+
   const query = new URLSearchParams({
-    page: page.toString(),
-    pageSize: pageSize.toString(),
-    search,
-    subcategory_id: subcategoryId,
+    page: pageNum.toString(),
+    pageSize: sizeNum.toString(),
+    search: search || "",
+    subcategory_id: subcategoryId || "",
   });
 
-  const res = await request(`/api/ads/all?${query.toString()}`); // Use same request function
+  // Call your API using request function
+  const res = await request(`/api/ads/all?${query.toString()}`);
+
   return {
     products: res?.products || [],
     total: res?.total || 0,
   };
 };
-
 
 
 // ------------------ CREATE PRODUCT ------------------
