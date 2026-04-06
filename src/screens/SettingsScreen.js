@@ -1,3 +1,4 @@
+// SettingsScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -7,9 +8,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  ActivityIndicator,
   Alert,
 } from "react-native";
+import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import { USER_ID, BASE_URL } from "../config/user";
 
 export default function SettingsScreen() {
@@ -30,7 +31,6 @@ export default function SettingsScreen() {
   const fetchUser = async () => {
     try {
       const res = await fetch(`${BASE_URL}/get_user/${USER_ID}`);
-
       if (!res.ok) throw new Error("Failed to fetch user");
 
       const data = await res.json();
@@ -42,9 +42,7 @@ export default function SettingsScreen() {
       setPhone(user.phone || "");
       setEmail(user.email || "");
 
-      if (user.avatar_url) {
-        setAvatar(user.avatar_url);
-      }
+      if (user.avatar_url) setAvatar(user.avatar_url);
     } catch (error) {
       console.log("Fetch Error:", error);
       Alert.alert("Error", "Failed to load user data");
@@ -53,56 +51,55 @@ export default function SettingsScreen() {
     }
   };
 
-  // ✅ Save user
   const handleSave = async () => {
     try {
       const res = await fetch(`${BASE_URL}/save-details`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: USER_ID,
-          firstName,
-          lastName,
-          location,
-          phone,
-          email,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: USER_ID, firstName, lastName, location, phone, email }),
       });
 
       const data = await res.json();
-
-      if (res.ok) {
-        Alert.alert("Success", "Profile updated successfully");
-      } else {
-        Alert.alert("Error", data.message || "Failed to save");
-      }
+      if (res.ok) Alert.alert("Success", "Profile updated successfully");
+      else Alert.alert("Error", data.message || "Failed to save");
     } catch (error) {
       console.log("Save Error:", error);
       Alert.alert("Error", "Network error");
     }
   };
 
-  // 🔄 Loading state
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  // 🔄 Shimmer Placeholder while loading
+  const SettingsShimmer = () => (
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Personal Details</Text>
 
-  return (
+      <View style={styles.avatarContainer}>
+        <ShimmerPlaceHolder style={styles.avatar} />
+        <ShimmerPlaceHolder style={{ width: 80, height: 25, borderRadius: 6, marginTop: 10 }} />
+      </View>
+
+      {[...Array(5)].map((_, i) => (
+        <ShimmerPlaceHolder
+          key={i}
+          style={{ height: 45, borderRadius: 8, marginBottom: 10 }}
+        />
+      ))}
+
+      <ShimmerPlaceHolder style={{ height: 50, borderRadius: 10, marginTop: 20 }} />
+    </ScrollView>
+  );
+
+  // 🔄 Main Render
+  return loading ? (
+    <SettingsShimmer />
+  ) : (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Personal Details</Text>
 
       {/* Avatar */}
       <View style={styles.avatarContainer}>
         <Image
-          source={{
-            uri: avatar || "https://placekitten.com/200/200",
-          }}
+          source={{ uri: avatar || "https://placekitten.com/200/200" }}
           style={styles.avatar}
         />
         <TouchableOpacity style={styles.changeBtn}>
@@ -132,6 +129,7 @@ export default function SettingsScreen() {
     </ScrollView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "nono-app",
-    "slug": "nono-app",
+    "name": "nono online shop",
+    "slug": "nono online shop",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/nono.png",
     "userInterfaceStyle": "light",
     "scheme": "nonoapp",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/nono.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,18 +17,24 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.kelvin.nonoapp",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/nono.png"
     },
     "plugins": [
       "@react-native-google-signin/google-signin",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f45a13d1-d6a4-4ace-85a2-b5a58262abc6"
+      }
+    }
   }
 }

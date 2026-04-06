@@ -13,6 +13,7 @@ import QuickActions from "../components/home/QuickActions";
 import CategoriesSection from "../components/home/CategoriesSection";
 import ProductItem from "../components/home/ProductItem";
 
+
 import useHomeData from "../hooks/useHomeData";
 
 export default function HomeScreen({ navigation }) {

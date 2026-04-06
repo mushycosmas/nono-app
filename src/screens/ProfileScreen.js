@@ -1,3 +1,4 @@
+// ProfileScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -7,9 +8,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import { USER_ID, BASE_URL } from "../config/user";
 
 export default function ProfileScreen({ navigation }) {
@@ -34,16 +35,13 @@ export default function ProfileScreen({ navigation }) {
       const res = await fetch(
         `${BASE_URL}/seller/stats?sellerId=${USER_ID}`
       );
-
       if (!res.ok) throw new Error("Failed to fetch stats");
-
       const data = await res.json();
-
       setStats({
         ads: data.totalAds || 0,
         views: data.totalViews || 0,
         messages: data.totalMessages || 0,
-        sold: 0, // optional (you can add later from API)
+        sold: 0, // optional
       });
     } catch (error) {
       console.log("Stats Error:", error);
@@ -59,16 +57,37 @@ export default function ProfileScreen({ navigation }) {
     ]);
   };
 
-  // 🔄 Loading
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" />
+  // 🔄 Render Shimmer Placeholder
+  const ProfileShimmer = () => (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <ShimmerPlaceHolder style={styles.profileImage} />
+        <ShimmerPlaceHolder style={{ width: 120, height: 20, marginTop: 10 }} />
       </View>
-    );
-  }
 
-  return (
+      <View style={styles.statsContainer}>
+        {[1, 2, 3, 4].map((i) => (
+          <View style={styles.card} key={i}>
+            <ShimmerPlaceHolder style={{ width: 22, height: 22, borderRadius: 5 }} />
+            <ShimmerPlaceHolder style={{ width: 40, height: 20, marginTop: 5, borderRadius: 4 }} />
+            <ShimmerPlaceHolder style={{ width: 60, height: 12, marginTop: 5, borderRadius: 4 }} />
+          </View>
+        ))}
+      </View>
+
+      {[...Array(6)].map((_, i) => (
+        <ShimmerPlaceHolder
+          key={i}
+          style={{ height: 50, borderRadius: 10, marginBottom: 10 }}
+        />
+      ))}
+    </ScrollView>
+  );
+
+  // 🔄 Main Render
+  return loading ? (
+    <ProfileShimmer />
+  ) : (
     <ScrollView style={styles.container}>
       {/* 🔥 HEADER */}
       <View style={styles.header}>
@@ -135,7 +154,7 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* 🔥 SETTINGS */}
+      {/* 🔥 ACCOUNT SETTINGS */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
 
@@ -149,14 +168,13 @@ export default function ProfileScreen({ navigation }) {
 
         <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
           <Icon name="log-out-outline" size={22} color="#dc3545" />
-          <Text style={[styles.menuText, { color: "#dc3545" }]}>
-            Logout
-          </Text>
+          <Text style={[styles.menuText, { color: "#dc3545" }]}>Logout</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -173,6 +191,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
+    marginBottom: 10,
   },
 
   userName: {
@@ -232,9 +251,4 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontWeight: "600",
   },
-  loader: {
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-},
 });

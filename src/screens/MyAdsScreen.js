@@ -6,12 +6,15 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
+  Dimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import { USER_ID, BASE_URL } from "../config/user";
 import { useNavigation } from "@react-navigation/native";
+
+const { width } = Dimensions.get("window");
 
 export default function MyAdsScreen() {
   const [ads, setAds] = useState([]);
@@ -22,17 +25,12 @@ export default function MyAdsScreen() {
     fetchAds();
   }, []);
 
-  // ✅ FETCH ADS
+  // ---------------- FETCH ADS ----------------
   const fetchAds = async () => {
     try {
-      const res = await fetch(
-        `${BASE_URL}/seller/products?user_id=${USER_ID}`
-      );
-
+      const res = await fetch(`${BASE_URL}/seller/products?user_id=${USER_ID}`);
       const data = await res.json();
-      const products = data?.products || [];
-
-      setAds(products);
+      setAds(data?.products || []);
     } catch (error) {
       console.log("Ads Error:", error);
       Alert.alert("Error", "Failed to load ads");
@@ -41,7 +39,7 @@ export default function MyAdsScreen() {
     }
   };
 
-  // ✅ DELETE PRODUCT
+  // ---------------- DELETE PRODUCT ----------------
   const handleDelete = (id) => {
     Alert.alert("Delete", "Are you sure you want to delete this product?", [
       { text: "Cancel" },
@@ -55,9 +53,7 @@ export default function MyAdsScreen() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id }),
             });
-
             const data = await res.json();
-
             if (res.ok) {
               setAds((prev) => prev.filter((item) => item.id !== id));
               Alert.alert("Success", "Ad deleted successfully");
@@ -73,76 +69,42 @@ export default function MyAdsScreen() {
     ]);
   };
 
-  // ✅ SHORT TITLE
-  const shortTitle = (text) => {
-    if (!text) return "";
-    return text.length > 25 ? text.substring(0, 25) + "..." : text;
+  // ---------------- SHORT TITLE ----------------
+  const shortTitle = (text) => (text?.length > 25 ? text.substring(0, 25) + "..." : text || "");
+
+  // ---------------- GET IMAGE ----------------
+  const getImage = (item) => {
+    if (!item) return "https://placehold.co/100x100";
+
+    const img = (Array.isArray(item.images) && item.images[0]) || item.image_url;
+    const BASE = BASE_URL.replace("/api", "");
+
+    return img?.startsWith("http") ? img : `${BASE}${img}`;
   };
 
-  // ✅ FIXED IMAGE HANDLER
- const getImage = (item) => {
-  if (!item) return "https://placehold.co/100x100";
-
-  let img =
-    (Array.isArray(item.images) && item.images[0]) ||
-    item.image_url;
-
-  if (!img) return "https://placehold.co/100x100";
-
-  // 🔥 REMOVE /api
-  const BASE = BASE_URL.replace("/api", "");
-
-  return img.startsWith("http")
-    ? img
-    : `${BASE}${img}`;
-};
-      
-
-  // ✅ RENDER ITEM
+  // ---------------- RENDER ITEM ----------------
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <Image
         source={{ uri: getImage(item) }}
         style={styles.image}
         resizeMode="cover"
-        onError={(e) =>
-          console.log("Image load error:", e.nativeEvent.error)
-        }
       />
-
       <View style={{ flex: 1 }}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>
-            {shortTitle(item?.title || item?.name)}
-          </Text>
-
-          {item?.is_best && (
-            <Text style={styles.bestBadge}>BEST</Text>
-          )}
+          <Text style={styles.title}>{shortTitle(item?.title || item?.name)}</Text>
+          {item?.is_best && <Text style={styles.bestBadge}>BEST</Text>}
         </View>
-
-        <Text style={styles.price}>
-          TZS {item?.price || item?.selling_price}
-        </Text>
-
-        <Text style={styles.views}>
-          👁 {item?.views || item?.viewed || 0} views
-        </Text>
-
+        <Text style={styles.price}>TZS {item?.price || item?.selling_price}</Text>
+        <Text style={styles.views}>👁 {item?.views || item?.viewed || 0} views</Text>
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.btn}
-            onPress={() =>
-              navigation.navigate("EditProduct", { product: item })
-            }
+            onPress={() => navigation.navigate("EditProduct", { product: item })}
           >
             <Icon name="create-outline" size={18} color="#007bff" />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.btn}
-            onPress={() => handleDelete(item?.id)}
-          >
+          <TouchableOpacity style={styles.btn} onPress={() => handleDelete(item?.id)}>
             <Icon name="trash-outline" size={18} color="#dc3545" />
           </TouchableOpacity>
         </View>
@@ -150,21 +112,40 @@ export default function MyAdsScreen() {
     </View>
   );
 
-  // ✅ LOADING
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" />
+  // ---------------- SHIMMER PLACEHOLDER ----------------
+  const renderShimmer = () => {
+    return Array.from({ length: 5 }).map((_, index) => (
+      <View key={index} style={styles.card}>
+        <ShimmerPlaceHolder style={styles.image} shimmerStyle={{ borderRadius: 8 }} />
+        <View style={{ flex: 1, justifyContent: "space-between" }}>
+          <ShimmerPlaceHolder
+            style={{ width: "60%", height: 20, marginBottom: 5, borderRadius: 4 }}
+          />
+          <ShimmerPlaceHolder
+            style={{ width: "40%", height: 16, marginBottom: 5, borderRadius: 4 }}
+          />
+          <ShimmerPlaceHolder
+            style={{ width: "50%", height: 16, marginBottom: 5, borderRadius: 4 }}
+          />
+          <View style={{ flexDirection: "row", marginTop: 5 }}>
+            <ShimmerPlaceHolder
+              style={{ width: 30, height: 30, marginRight: 15, borderRadius: 4 }}
+            />
+            <ShimmerPlaceHolder
+              style={{ width: 30, height: 30, borderRadius: 4 }}
+            />
+          </View>
+        </View>
       </View>
-    );
-  }
+    ));
+  };
 
-  // ✅ MAIN UI
   return (
     <View style={styles.container}>
       <Text style={styles.header}>My Ads</Text>
-
-      {ads.length === 0 ? (
+      {loading ? (
+        <View>{renderShimmer()}</View>
+      ) : ads.length === 0 ? (
         <Text>No ads found</Text>
       ) : (
         <FlatList
@@ -178,23 +159,10 @@ export default function MyAdsScreen() {
   );
 }
 
-// ✅ STYLES
+// ---------------- STYLES ----------------
 const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f6fa",
-    padding: 15,
-  },
-  header: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
+  container: { flex: 1, backgroundColor: "#f5f6fa", padding: 15 },
+  header: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
   card: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -202,20 +170,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
   },
-  image: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: "bold",
-  },
+  image: { width: 80, height: 80, borderRadius: 8, marginRight: 10 },
+  titleRow: { flexDirection: "row", alignItems: "center" },
+  title: { fontSize: 15, fontWeight: "bold" },
   bestBadge: {
     backgroundColor: "#ffc107",
     color: "#fff",
@@ -226,19 +183,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     fontSize: 10,
   },
-  price: {
-    color: "#28a745",
-    marginVertical: 4,
-  },
-  views: {
-    fontSize: 12,
-    color: "#777",
-  },
-  actions: {
-    flexDirection: "row",
-    marginTop: 8,
-  },
-  btn: {
-    marginRight: 15,
-  },
+  price: { color: "#28a745", marginVertical: 4 },
+  views: { fontSize: 12, color: "#777" },
+  actions: { flexDirection: "row", marginTop: 8 },
+  btn: { marginRight: 15 },
 });
