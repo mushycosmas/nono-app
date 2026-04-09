@@ -11,6 +11,7 @@ import EditProductScreen from "../screens/EditProductScreen";
 import SearchResults from "../screens/SearchResults";
 import SubcategoryList from "../screens/SubcategoryList";
 import CategoryProducts from "../screens/CategoryProducts";
+import CategorySelectScreen from "../screens/CategorySelectScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -65,6 +66,12 @@ export default function AppNavigator() {
           options={({ route }) => ({
             title: route.params.subcategoryName || "Products",
           })}
+        />
+         {/* Category Select Screen */}
+        <Stack.Screen
+          name="CategorySelect" // <-- This is now registered
+          component={CategorySelectScreen}
+          options={{ title: "Select Category" }}
         />
       </Stack.Navigator>
     </NavigationContainer>

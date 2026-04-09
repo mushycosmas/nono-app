@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
+import * as ImagePicker from "expo-image-picker";
 import { USER_ID, BASE_URL } from "../config/user";
 
 export default function SettingsScreen() {
@@ -23,7 +24,14 @@ export default function SettingsScreen() {
 
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch user on mount
+  // 🔥 Convert relative path to full URL
+  const getFullImage = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    return `${BASE_URL.replace("/api", "")}${path}`;
+  };
+
+  // ✅ Fetch user
   useEffect(() => {
     fetchUser();
   }, []);
@@ -31,8 +39,6 @@ export default function SettingsScreen() {
   const fetchUser = async () => {
     try {
       const res = await fetch(`${BASE_URL}/get_user/${USER_ID}`);
-      if (!res.ok) throw new Error("Failed to fetch user");
-
       const data = await res.json();
       const user = data.user || data;
 
@@ -41,73 +47,127 @@ export default function SettingsScreen() {
       setLocation(user.location || "Dodoma");
       setPhone(user.phone || "");
       setEmail(user.email || "");
-
-      if (user.avatar_url) setAvatar(user.avatar_url);
+      setAvatar(getFullImage(user.avatar_url)); // ✅ FIXED
     } catch (error) {
       console.log("Fetch Error:", error);
-      Alert.alert("Error", "Failed to load user data");
+      Alert.alert("Error", "Failed to load user");
     } finally {
       setLoading(false);
     }
   };
 
+  // 📸 Pick image
+  const pickAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setAvatar(result.assets[0].uri);
+    }
+  };
+
+  // 💾 Save
   const handleSave = async () => {
+    // ❌ Prevent empty fields
+    if (!firstName || !lastName || !phone || !email) {
+      Alert.alert("Error", "Please fill all required fields");
+      return;
+    }
+
     try {
+      const formData = new FormData();
+
+      formData.append("id", USER_ID);
+      formData.append("firstName", firstName);
+      formData.append("lastName", lastName);
+      formData.append("location", location);
+      formData.append("phone", phone);
+      formData.append("email", email);
+
+      // only upload if new image selected
+      if (avatar && !avatar.startsWith("http")) {
+        const filename = avatar.split("/").pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image";
+
+        formData.append("avatar", {
+          uri: avatar,
+          name: filename,
+          type,
+        });
+      }
+
       const res = await fetch(`${BASE_URL}/save-details`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: USER_ID, firstName, lastName, location, phone, email }),
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
       const data = await res.json();
-      if (res.ok) Alert.alert("Success", "Profile updated successfully");
-      else Alert.alert("Error", data.message || "Failed to save");
+
+      if (res.ok) {
+        Alert.alert("Success", "Profile updated");
+
+        // 🔥 REFRESH USER AFTER SAVE
+        fetchUser();
+      } else {
+        Alert.alert("Error", data.message || "Failed to save");
+      }
     } catch (error) {
       console.log("Save Error:", error);
       Alert.alert("Error", "Network error");
     }
   };
 
-  // 🔄 Shimmer Placeholder while loading
+  // 🔄 Shimmer
   const SettingsShimmer = () => (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Personal Details</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <ShimmerPlaceHolder style={styles.titleShimmer} />
 
       <View style={styles.avatarContainer}>
         <ShimmerPlaceHolder style={styles.avatar} />
-        <ShimmerPlaceHolder style={{ width: 80, height: 25, borderRadius: 6, marginTop: 10 }} />
+        <ShimmerPlaceHolder style={styles.btnShimmer} />
       </View>
 
       {[...Array(5)].map((_, i) => (
-        <ShimmerPlaceHolder
-          key={i}
-          style={{ height: 45, borderRadius: 8, marginBottom: 10 }}
-        />
+        <ShimmerPlaceHolder key={i} style={styles.inputShimmer} />
       ))}
-
-      <ShimmerPlaceHolder style={{ height: 50, borderRadius: 10, marginTop: 20 }} />
     </ScrollView>
   );
 
-  // 🔄 Main Render
-  return loading ? (
-    <SettingsShimmer />
-  ) : (
-    <ScrollView style={styles.container}>
+  if (loading) return <SettingsShimmer />;
+
+  return (
+    <ScrollView
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={styles.title}>Personal Details</Text>
 
-      {/* Avatar */}
+      {/* 🔥 Avatar */}
       <View style={styles.avatarContainer}>
         <Image
-          source={{ uri: avatar || "https://placekitten.com/200/200" }}
+          source={{
+            uri:
+              avatar ||
+              `https://ui-avatars.com/api/?name=${firstName}+${lastName}&background=28a745&color=fff`,
+          }}
           style={styles.avatar}
+          onError={() => console.log("❌ IMAGE FAILED:", avatar)}
         />
-        <TouchableOpacity style={styles.changeBtn}>
-          <Text style={{ color: "#fff" }}>Change</Text>
+
+        <TouchableOpacity style={styles.changeBtn} onPress={pickAvatar}>
+          <Text style={styles.changeText}>Change Photo</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Form */}
+      {/* 🔥 Form */}
       <Text style={styles.label}>First Name</Text>
       <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} />
 
@@ -123,8 +183,9 @@ export default function SettingsScreen() {
       <Text style={styles.label}>Email</Text>
       <TextInput style={styles.input} value={email} onChangeText={setEmail} />
 
+      {/* 🔥 Save Button */}
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-        <Text style={styles.saveText}>Save</Text>
+        <Text style={styles.saveText}>Save Changes</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -132,13 +193,13 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    padding: 16,
     backgroundColor: "#f5f6fa",
-    padding: 15,
+    flexGrow: 1,
   },
 
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     marginBottom: 15,
   },
@@ -149,16 +210,24 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 2,
+    borderColor: "#28a745",
   },
 
   changeBtn: {
-    backgroundColor: "#28a745",
-    padding: 6,
-    borderRadius: 6,
     marginTop: 10,
+    backgroundColor: "#28a745",
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+
+  changeText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 
   label: {
@@ -168,15 +237,17 @@ const styles = StyleSheet.create({
 
   input: {
     backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 10,
     marginTop: 5,
+    borderWidth: 1,
+    borderColor: "#eee",
   },
 
   saveBtn: {
     backgroundColor: "#28a745",
-    padding: 14,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 12,
     marginTop: 20,
     alignItems: "center",
   },
@@ -184,5 +255,27 @@ const styles = StyleSheet.create({
   saveText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 16,
+  },
+
+  // shimmer
+  titleShimmer: {
+    height: 20,
+    width: 150,
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+
+  btnShimmer: {
+    width: 100,
+    height: 30,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+
+  inputShimmer: {
+    height: 45,
+    borderRadius: 10,
+    marginBottom: 10,
   },
 });

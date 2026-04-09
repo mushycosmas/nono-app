@@ -11,30 +11,19 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 
 const BASE_URL = "https://nono.co.tz";
 
 export default function EditProductScreen() {
-  const route = useRoute();
   const navigation = useNavigation();
+  const route = useRoute();
   const { product } = route.params;
 
-  // --- Helper ---
-  const getImageUrl = (img) => {
-    if (!img) return "https://placehold.co/100x100";
-    if (img.startsWith("http")) return img;
-    return `${BASE_URL}${img}`;
-  };
-
-  const getRelativePath = (url) => {
-    return url.replace(BASE_URL, "");
-  };
-
-  // --- Form ---
-  const [form, setForm] = useState({
+  const initialFormState = {
     name: product.name || "",
     price: product.price?.toString() || "",
     description: product.product_description || "",
@@ -42,252 +31,227 @@ export default function EditProductScreen() {
     status: product.status || "active",
     category_id: product.category_id?.toString() || "1",
     subcategory_id: product.subcategory_id?.toString() || "11",
-  });
+  };
 
-  // --- Images ---
-  const [images, setImages] = useState(
-    (product.images || []).map((img) => getImageUrl(img))
-  );
+  const [form, setForm] = useState(initialFormState);
+  const [images, setImages] = useState((product.images || []).map(img => img.startsWith("http") ? img : `${BASE_URL}${img}`));
   const [newImages, setNewImages] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  // --- Loading state ---
-  const [loading, setLoading] = useState(false);
-
-  // --- Categories ---
   const staticCategories = [
-    {
-      id: "1",
-      name: "Electronics",
-      subcategories: [
-        { id: "11", name: "Laptops" },
-        { id: "12", name: "Phones" },
-      ],
-    },
-    {
-      id: "2",
-      name: "Fashion",
-      subcategories: [
-        { id: "21", name: "Shirts" },
-        { id: "22", name: "Shoes" },
-      ],
-    },
+    { id: "1", name: "Electronics", subcategories: [{ id: "11", name: "Laptops" }, { id: "12", name: "Phones" }] },
+    { id: "2", name: "Fashion", subcategories: [{ id: "21", name: "Shirts" }, { id: "22", name: "Shoes" }] },
   ];
 
   const [filteredSubcategories, setFilteredSubcategories] = useState(
-    staticCategories[0].subcategories
+    staticCategories.find(c => c.id === form.category_id)?.subcategories || []
   );
 
   useEffect(() => {
-    const category = staticCategories.find((c) => c.id === form.category_id);
+    const category = staticCategories.find(c => c.id === form.category_id);
     if (category) {
       setFilteredSubcategories(category.subcategories);
+      if (!category.subcategories.some(s => s.id === form.subcategory_id)) {
+        setForm({ ...form, subcategory_id: category.subcategories[0].id });
+      }
     }
   }, [form.category_id]);
 
-  // --- Wholesale ---
-  const [wholesaleTiers, setWholesaleTiers] = useState(
-    product.wholesale_tiers || [
-      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
-    ]
-  );
-
+  // Wholesale tiers
+  const [wholesaleTiers, setWholesaleTiers] = useState(product.wholesale_tiers || [{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
+  const addTier = () => setWholesaleTiers(prev => [...prev, { min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
   const updateTier = (index, field, value) => {
     const updated = [...wholesaleTiers];
-    updated[index][field] =
-      field === "whole_seller_price" ? value : Number(value);
+    updated[index][field] = field === "whole_seller_price" ? value : Number(value);
     setWholesaleTiers(updated);
   };
+  const removeTier = index => setWholesaleTiers(prev => prev.filter((_, i) => i !== index));
 
-  const addTier = () =>
-    setWholesaleTiers((prev) => [
-      ...prev,
-      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
-    ]);
-
-  const removeTier = (index) =>
-    setWholesaleTiers((prev) => prev.filter((_, i) => i !== index));
-
-  // --- Image Picker (SAFE FIX) ---
+  // Image picker
   const pickImages = async () => {
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission required");
+      Alert.alert("Permission required", "Please allow access to gallery");
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // fallback (works)
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.7,
     });
-
-    if (!result.canceled) {
-      setNewImages((prev) => [...prev, ...result.assets]);
-    }
+    if (!result.canceled) setNewImages(prev => [...prev, ...result.assets]);
   };
 
-  const removeImage = (uri) =>
-    setImages((prev) => prev.filter((i) => i !== uri));
+  const removeImage = uri => setImages(prev => prev.filter(i => i !== uri));
+  const removeNewImage = index => setNewImages(prev => prev.filter((_, i) => i !== index));
 
-  const removeNewImage = (index) =>
-    setNewImages((prev) => prev.filter((_, i) => i !== index));
-
-  // --- UPDATE API ---
+  // Submit update
   const handleUpdate = async () => {
-    if (loading) return; // prevent multi-submit
-
     if (!form.name || !form.price || !form.location) {
-      Alert.alert("Error", "Fill all required fields");
+      Alert.alert("Error", "Please fill all required fields");
       return;
     }
-
-    setLoading(true);
-
+    setSubmitting(true);
     const formData = new FormData();
-
     formData.append("name", form.name);
     formData.append("price", form.price);
     formData.append("product_description", form.description);
     formData.append("location", form.location);
     formData.append("status", form.status);
+    formData.append("category_id", form.category_id);
     formData.append("subcategory_id", form.subcategory_id);
     formData.append("wholesale_tiers", JSON.stringify(wholesaleTiers));
 
-    // ✅ EXISTING IMAGES (IMPORTANT)
-    images.forEach((img) => {
-      formData.append("existingImages", getRelativePath(img));
-    });
+    // existing images
+    images.forEach(img => formData.append("existingImages", img.replace(BASE_URL, "")));
 
-    // ✅ NEW IMAGES
+    // new images
     newImages.forEach((img, idx) => {
-      formData.append("newImages[]", {
-        uri: img.uri,
-        type: "image/jpeg",
-        name: `image_${idx}.jpg`,
-      });
+      formData.append("newImages[]", { uri: img.uri, type: "image/jpeg", name: `image_${idx}.jpg` });
     });
 
     try {
-      const res = await fetch(
-        `${BASE_URL}/api/seller/products/${product.id}`,
-        {
-          method: "PUT",
-          body: formData,
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
+      const res = await fetch(`${BASE_URL}/api/seller/products/${product.id}`, {
+        method: "PUT",
+        body: formData,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       const data = await res.json();
-
       if (!res.ok) {
-        Alert.alert("Error", data.message || "Update failed");
+        Alert.alert("Error", data.message || "Failed to update product");
       } else {
-        Alert.alert("Success", "Product updated");
-
-        // reset + redirect
-        navigation.goBack();
+        Alert.alert("Success", "Product updated successfully!");
+        navigation.navigate("MyAds", { refresh: true });
       }
     } catch (err) {
       console.log(err);
-      Alert.alert("Error", "Network error");
+      Alert.alert("Error", "Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+          {/* Images */}
+          <Text style={styles.sectionTitle}>Images</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {images.map((img, idx) => (
+              <View key={idx} style={styles.imageCard}>
+                <Image source={{ uri: img }} style={styles.image} resizeMode="cover" />
+                <TouchableOpacity style={styles.removeBtn} onPress={() => removeImage(img)}>
+                  <Icon name="close" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            {newImages.map((img, idx) => (
+              <View key={idx} style={styles.imageCard}>
+                <Image source={{ uri: img.uri }} style={styles.image} resizeMode="cover" />
+                <TouchableOpacity style={styles.removeBtn} onPress={() => removeNewImage(idx)}>
+                  <Icon name="close" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.addImageBtn} onPress={pickImages}>
+              <Icon name="camera-outline" size={30} color="#28a745" />
+            </TouchableOpacity>
+          </ScrollView>
 
-        <Text style={styles.title}>Edit Product</Text>
+          {/* Product Info */}
+          <View style={styles.card}>
+            <Text style={styles.label}>Product Name</Text>
+            <TextInput style={styles.input} value={form.name} onChangeText={text => setForm({ ...form, name: text })} />
 
-        {/* Images */}
-        <ScrollView horizontal>
-          {images.map((img, i) => (
-            <View key={i} style={styles.imageWrapper}>
-              <Image source={{ uri: img }} style={styles.image} />
-              <TouchableOpacity onPress={() => removeImage(img)}>
-                <Icon name="close-circle" size={22} color="red" />
-              </TouchableOpacity>
+            <Text style={styles.label}>Price</Text>
+            <TextInput style={styles.input} keyboardType="numeric" value={form.price} onChangeText={text => setForm({ ...form, price: text })} />
+
+            <Text style={styles.label}>Description</Text>
+            <TextInput style={[styles.input, { height: 100 }]} multiline value={form.description} onChangeText={text => setForm({ ...form, description: text })} />
+
+            <Text style={styles.label}>Location</Text>
+            <TextInput style={styles.input} value={form.location} onChangeText={text => setForm({ ...form, location: text })} />
+          </View>
+
+          {/* Status */}
+          <View style={styles.card}>
+            <Text style={styles.label}>Status</Text>
+            <View style={styles.row}>
+              {["active", "inactive"].map(s => (
+                <TouchableOpacity key={s} style={[styles.chip, form.status === s && styles.chipActive]} onPress={() => setForm({ ...form, status: s })}>
+                  <Text style={form.status === s && { color: "#fff" }}>{s}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          ))}
+          </View>
 
-          {newImages.map((img, i) => (
-            <View key={i} style={styles.imageWrapper}>
-              <Image source={{ uri: img.uri }} style={styles.image} />
-              <TouchableOpacity onPress={() => removeNewImage(i)}>
-                <Icon name="close-circle" size={22} color="red" />
-              </TouchableOpacity>
+          {/* Category & Subcategory */}
+          <View style={styles.card}>
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.rowWrap}>
+              {staticCategories.map(c => (
+                <TouchableOpacity key={c.id} style={[styles.chip, form.category_id === c.id && styles.chipActive]} onPress={() => setForm({ ...form, category_id: c.id })}>
+                  <Text style={form.category_id === c.id && { color: "#fff" }}>{c.name}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          ))}
 
-          <TouchableOpacity onPress={pickImages}>
-            <Icon name="add-circle-outline" size={40} color="green" />
-          </TouchableOpacity>
+            <Text style={[styles.label, { marginTop: 10 }]}>Subcategory</Text>
+            <View style={styles.rowWrap}>
+              {filteredSubcategories.map(s => (
+                <TouchableOpacity key={s.id} style={[styles.chip, form.subcategory_id === s.id && styles.chipActive]} onPress={() => setForm({ ...form, subcategory_id: s.id })}>
+                  <Text style={form.subcategory_id === s.id && { color: "#fff" }}>{s.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Wholesale Tiers */}
+          <View style={styles.card}>
+            <Text style={styles.label}>Wholesale Tiers</Text>
+            {wholesaleTiers.map((item, index) => (
+              <View key={index} style={styles.tierRow}>
+                <TextInput style={styles.tierInput} placeholder="Min" keyboardType="numeric" value={item.min_qty.toString()} onChangeText={v => updateTier(index, "min_qty", v)} />
+                <TextInput style={styles.tierInput} placeholder="Max" keyboardType="numeric" value={item.max_qty.toString()} onChangeText={v => updateTier(index, "max_qty", v)} />
+                <TextInput style={styles.tierInput} placeholder="Price" keyboardType="numeric" value={item.whole_seller_price} onChangeText={v => updateTier(index, "whole_seller_price", v)} />
+                <TouchableOpacity onPress={() => removeTier(index)}>
+                  <Icon name="close-circle" size={22} color="#dc3545" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity onPress={addTier}>
+              <Text style={{ color: "#28a745", marginTop: 5 }}>+ Add Tier</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
-        {/* Inputs */}
-        <TextInput
-          style={styles.input}
-          value={form.name}
-          onChangeText={(t) => setForm({ ...form, name: t })}
-          placeholder="Name"
-        />
-
-        <TextInput
-          style={styles.input}
-          value={form.price}
-          keyboardType="numeric"
-          onChangeText={(t) => setForm({ ...form, price: t })}
-          placeholder="Price"
-        />
-
-        <TextInput
-          style={styles.input}
-          value={form.location}
-          onChangeText={(t) => setForm({ ...form, location: t })}
-          placeholder="Location"
-        />
-
-        {/* Button */}
-        <TouchableOpacity
-          style={[styles.btn, loading && { backgroundColor: "#999" }]}
-          onPress={handleUpdate}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnText}>Update Product</Text>
-          )}
+        {/* Update Button */}
+        <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleUpdate} disabled={submitting}>
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Update Product</Text>}
         </TouchableOpacity>
-
-      </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 15 },
-  title: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  input: {
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  btn: {
-    backgroundColor: "#28a745",
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 20,
-    alignItems: "center",
-  },
-  btnText: { color: "#fff", fontWeight: "bold" },
-  imageWrapper: { marginRight: 10 },
-  image: { width: 100, height: 100, borderRadius: 8 },
+  safe: { flex: 1, backgroundColor: "#f5f5f5" },
+  container: { flex: 1, paddingHorizontal: 15 },
+  sectionTitle: { fontSize: 16, fontWeight: "bold", marginVertical: 10 },
+  card: { backgroundColor: "#fff", padding: 12, borderRadius: 12, marginBottom: 12, elevation: 2 },
+  label: { fontSize: 12, fontWeight: "600", color: "#555", marginTop: 8 },
+  input: { backgroundColor: "#f9f9f9", borderRadius: 8, padding: 10, marginTop: 5 },
+  row: { flexDirection: "row", marginTop: 10 },
+  rowWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: 5 },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#eee", marginRight: 6, marginTop: 6 },
+  chipActive: { backgroundColor: "#28a745" },
+  imageCard: { marginRight: 10, position: "relative" },
+  image: { width: 100, height: 100, borderRadius: 10 },
+  removeBtn: { position: "absolute", top: 5, right: 5, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, padding: 3 },
+  addImageBtn: { width: 100, height: 100, borderRadius: 10, borderWidth: 2, borderColor: "#28a745", justifyContent: "center", alignItems: "center" },
+  tierRow: { flexDirection: "row", alignItems: "center", marginTop: 5 },
+  tierInput: { flex: 1, backgroundColor: "#f9f9f9", marginRight: 5, padding: 8, borderRadius: 6 },
+  submitBtn: { position: "absolute", bottom: 1, left: 15, right: 15, backgroundColor: "#28a745", padding: 15, borderRadius: 12, alignItems: "center" },
+  submitText: { color: "#fff", fontWeight: "bold" },
 });

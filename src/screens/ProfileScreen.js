@@ -14,7 +14,8 @@ import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import { USER_ID, BASE_URL } from "../config/user";
 
 export default function ProfileScreen({ navigation }) {
-  const [userName] = useState("John Doe");
+  const [userName, setUserName] = useState("");
+  const [avatar, setAvatar] = useState(null);
 
   const [stats, setStats] = useState({
     ads: 0,
@@ -25,26 +26,43 @@ export default function ProfileScreen({ navigation }) {
 
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Fetch stats
   useEffect(() => {
-    fetchStats();
+    fetchAll();
   }, []);
 
-  const fetchStats = async () => {
+  // 🔥 Build full image URL
+  const getFullImage = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    return `https://nono.co.tz${path}`;
+  };
+
+  const fetchAll = async () => {
     try {
-      const res = await fetch(
+      // 🔹 Fetch user
+      const userRes = await fetch(`${BASE_URL}/get_user/${USER_ID}`);
+      const userData = await userRes.json();
+      const user = userData.user || userData;
+
+      setUserName(
+        `${user.first_name || ""} ${user.last_name || ""}`.trim()
+      );
+      setAvatar(getFullImage(user.avatar_url));
+
+      // 🔹 Fetch stats
+      const statsRes = await fetch(
         `${BASE_URL}/seller/stats?sellerId=${USER_ID}`
       );
-      if (!res.ok) throw new Error("Failed to fetch stats");
-      const data = await res.json();
+      const statsData = await statsRes.json();
+
       setStats({
-        ads: data.totalAds || 0,
-        views: data.totalViews || 0,
-        messages: data.totalMessages || 0,
-        sold: 0, // optional
+        ads: statsData.totalAds || 0,
+        views: statsData.totalViews || 0,
+        messages: statsData.totalMessages || 0,
+        sold: 0,
       });
     } catch (error) {
-      console.log("Stats Error:", error);
+      console.log("Error:", error);
     } finally {
       setLoading(false);
     }
@@ -57,45 +75,35 @@ export default function ProfileScreen({ navigation }) {
     ]);
   };
 
-  // 🔄 Render Shimmer Placeholder
+  // 🔄 Shimmer
   const ProfileShimmer = () => (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <ShimmerPlaceHolder style={styles.profileImage} />
         <ShimmerPlaceHolder style={{ width: 120, height: 20, marginTop: 10 }} />
       </View>
-
-      <View style={styles.statsContainer}>
-        {[1, 2, 3, 4].map((i) => (
-          <View style={styles.card} key={i}>
-            <ShimmerPlaceHolder style={{ width: 22, height: 22, borderRadius: 5 }} />
-            <ShimmerPlaceHolder style={{ width: 40, height: 20, marginTop: 5, borderRadius: 4 }} />
-            <ShimmerPlaceHolder style={{ width: 60, height: 12, marginTop: 5, borderRadius: 4 }} />
-          </View>
-        ))}
-      </View>
-
-      {[...Array(6)].map((_, i) => (
-        <ShimmerPlaceHolder
-          key={i}
-          style={{ height: 50, borderRadius: 10, marginBottom: 10 }}
-        />
-      ))}
     </ScrollView>
   );
 
-  // 🔄 Main Render
-  return loading ? (
-    <ProfileShimmer />
-  ) : (
+  if (loading) return <ProfileShimmer />;
+
+  return (
     <ScrollView style={styles.container}>
       {/* 🔥 HEADER */}
       <View style={styles.header}>
         <Image
-          source={{ uri: "https://placekitten.com/200/200" }}
+          source={{
+            uri:
+              avatar ||
+              `https://ui-avatars.com/api/?name=${userName}&background=28a745&color=fff`,
+          }}
           style={styles.profileImage}
+          onError={() => console.log("Image failed:", avatar)}
         />
-        <Text style={styles.userName}>{userName}</Text>
+
+        <Text style={styles.userName}>
+          {userName || "User"}
+        </Text>
       </View>
 
       {/* 🔥 STATS */}
@@ -154,7 +162,7 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* 🔥 ACCOUNT SETTINGS */}
+      {/* 🔥 ACCOUNT */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
 
@@ -168,7 +176,9 @@ export default function ProfileScreen({ navigation }) {
 
         <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
           <Icon name="log-out-outline" size={22} color="#dc3545" />
-          <Text style={[styles.menuText, { color: "#dc3545" }]}>Logout</Text>
+          <Text style={[styles.menuText, { color: "#dc3545" }]}>
+            Logout
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -188,10 +198,11 @@ const styles = StyleSheet.create({
   },
 
   profileImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    marginBottom: 10,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: "#28a745",
   },
 
   userName: {
