@@ -12,6 +12,7 @@ import SearchResults from "../screens/SearchResults";
 import SubcategoryList from "../screens/SubcategoryList";
 import CategoryProducts from "../screens/CategoryProducts";
 import CategorySelectScreen from "../screens/CategorySelectScreen";
+import LocationSelect from "../screens/LocationSelectScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -71,6 +72,14 @@ export default function AppNavigator() {
         <Stack.Screen
           name="CategorySelect" // <-- This is now registered
           component={CategorySelectScreen}
+          options={{ title: "Select Category" }}
+        />
+
+        {/* LocationSelectScreen */}
+
+        <Stack.Screen
+          name="LocationSelect" // <-- This is now registered
+          component={LocationSelect}
           options={{ title: "Select Category" }}
         />
       </Stack.Navigator>

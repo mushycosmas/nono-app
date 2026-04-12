@@ -71,14 +71,6 @@ export const fetchCategories = async () => {
   return data; // already includes subcategories
 };
 
-// ------------------ LOCATIONS (STATIC) ------------------
-export const fetchLocations = async () => {
-  return [
-    { id: 1, name: "Dar es Salaam" },
-    { id: 2, name: "Dodoma" },
-    { id: 3, name: "Arusha" },
-  ];
-};
 
 // ------------------ PRODUCTS ------------------
 export const fetchProducts = async (page = 1, pageSize = 12, search = "", subcategoryId = "") => {
@@ -112,4 +104,34 @@ export const updateProduct = async (id, formData) => {
 // ------------------ DELETE PRODUCT ------------------
 export const deleteProduct = async (id) => {
   return await request(`/api/seller/products/${id}`, { method: "DELETE" });
+};
+
+
+// ------------------ LOCATIONS (API + CACHE) ------------------
+export const fetchLocations = async () => {
+  // ✅ Return cached
+  if (cache.locations) {
+    return cache.locations;
+  }
+
+  const data = await request("/api/countries", { method: "GET" });
+
+  if (!data) return [];
+
+  // ✅ Normalize structure
+  cache.locations = data.map((country) => ({
+    id: Number(country.id),
+    name: country.name,
+    code: country.code,
+    regions: (country.regions || []).map((region) => ({
+      id: Number(region.id),
+      name: region.name,
+      districts: (region.districts || []).map((district) => ({
+        id: Number(district.id),
+        name: district.name,
+      })),
+    })),
+  }));
+
+  return cache.locations;
 };

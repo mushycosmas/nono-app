@@ -65,9 +65,9 @@ export default function SellScreen() {
 
   // ================= SUBMIT =================
   const handleSubmit = async () => {
-    // console.log("FORM:", form);
-    // console.log("WHOLESALE:", wholesaleTiers);
-    // console.log("IMAGES:", newImages.length);
+    console.log("FORM:", form);
+    console.log("WHOLESALE:", wholesaleTiers);
+    console.log("IMAGES:", newImages.length);
 
     if (!form.name || !form.price) {
       return Alert.alert("Error", "Name and price required");

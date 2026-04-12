@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  FlatList,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -15,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
+import { fetchCategories } from "../api/api";
 
 const BASE_URL = "https://nono.co.tz"; // backend
 
@@ -27,43 +27,54 @@ export default function SellScreen() {
     description: "",
     location: "",
     status: "active",
-    category_id: "1",
-    subcategory_id: "11",
+    category_id: "", // no preselect
+    subcategory_id: "",
   };
 
   const [form, setForm] = useState(initialFormState);
   const [images, setImages] = useState([]);
   const [newImages, setNewImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState(null);
   const [subcategory, setSubcategory] = useState(null);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const staticCategories = [
-    { id: "1", name: "Electronics", subcategories: [{ id: "11", name: "Laptops" }, { id: "12", name: "Phones" }] },
-    { id: "2", name: "Fashion", subcategories: [{ id: "21", name: "Shirts" }, { id: "22", name: "Shoes" }] },
-  ];
+  const [wholesaleTiers, setWholesaleTiers] = useState([
+    { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+  ]);
 
-  const [filteredSubcategories, setFilteredSubcategories] = useState(staticCategories[0].subcategories);
-
+  // --- Fetch categories from API ---
   useEffect(() => {
-    const category = staticCategories.find(c => c.id === form.category_id);
-    if (category) {
-      setFilteredSubcategories(category.subcategories);
-      if (!category.subcategories.some(s => s.id === form.subcategory_id)) {
-        setForm({ ...form, subcategory_id: category.subcategories[0].id });
+    const loadCategories = async () => {
+      try {
+        const data = await fetchCategories();
+        setCategories(data || []);
+      } catch (err) {
+        console.log(err);
+        Alert.alert("Error", "Failed to load categories");
+      } finally {
+        setLoadingCategories(false);
       }
-    }
-  }, [form.category_id]);
+    };
+    loadCategories();
+  }, []);
 
-  // --- Wholesale tiers ---
-  const [wholesaleTiers, setWholesaleTiers] = useState([{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
-  const addTier = () => setWholesaleTiers(prev => [...prev, { min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
+  // --- Wholesale tiers helpers ---
+  const addTier = () =>
+    setWholesaleTiers((prev) => [
+      ...prev,
+      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+    ]);
   const updateTier = (index, field, value) => {
     const updated = [...wholesaleTiers];
-    updated[index][field] = field === "whole_seller_price" ? value : Number(value);
+    updated[index][field] =
+      field === "whole_seller_price" ? value : Number(value);
     setWholesaleTiers(updated);
   };
-  const removeTier = (index) => setWholesaleTiers(prev => prev.filter((_, i) => i !== index));
+  const removeTier = (index) =>
+    setWholesaleTiers((prev) => prev.filter((_, i) => i !== index));
 
   // --- Image picker ---
   const pickImages = async () => {
@@ -77,16 +88,21 @@ export default function SellScreen() {
       allowsMultipleSelection: true,
       quality: 0.7,
     });
-    if (!result.canceled) setNewImages(prev => [...prev, ...result.assets]);
+    if (!result.canceled) setNewImages((prev) => [...prev, ...result.assets]);
   };
 
-  const removeImage = (uri) => setImages(prev => prev.filter(i => i !== uri));
-  const removeNewImage = (index) => setNewImages(prev => prev.filter((_, i) => i !== index));
+  const removeNewImage = (index) =>
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
 
   // --- Submit product ---
   const handleSubmit = async () => {
     if (!form.name || !form.price || !form.location) {
       Alert.alert("Error", "Please fill all required fields");
+      return;
+    }
+
+    if (!form.category_id || !form.subcategory_id) {
+      Alert.alert("Error", "Please select a category and subcategory");
       return;
     }
 
@@ -103,7 +119,11 @@ export default function SellScreen() {
     formData.append("wholesale_tiers", JSON.stringify(wholesaleTiers));
 
     newImages.forEach((img, idx) => {
-      formData.append("images[]", { uri: img.uri, type: "image/jpeg", name: `image_${idx}.jpg` });
+      formData.append("images[]", {
+        uri: img.uri,
+        type: "image/jpeg",
+        name: `image_${idx}.jpg`,
+      });
     });
 
     try {
@@ -122,6 +142,8 @@ export default function SellScreen() {
         setNewImages([]);
         setImages([]);
         setWholesaleTiers([{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]);
+        setCategory(null);
+        setSubcategory(null);
         navigation.navigate("MyAds", { refresh: true });
       }
     } catch (err) {
@@ -135,14 +157,24 @@ export default function SellScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+        >
           {/* Images */}
           <Text style={styles.sectionTitle}>Images</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {newImages.map((img, idx) => (
               <View key={idx} style={styles.imageCard}>
-                <Image source={{ uri: img.uri }} style={styles.image} resizeMode="cover" />
-                <TouchableOpacity style={styles.removeBtn} onPress={() => removeNewImage(idx)}>
+                <Image
+                  source={{ uri: img.uri }}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  style={styles.removeBtn}
+                  onPress={() => removeNewImage(idx)}
+                >
                   <Icon name="close" size={16} color="#fff" />
                 </TouchableOpacity>
               </View>
@@ -155,24 +187,46 @@ export default function SellScreen() {
           {/* Product Info */}
           <View style={styles.card}>
             <Text style={styles.label}>Product Name</Text>
-            <TextInput style={styles.input} value={form.name} onChangeText={text => setForm({ ...form, name: text })} />
+            <TextInput
+              style={styles.input}
+              value={form.name}
+              onChangeText={(text) => setForm({ ...form, name: text })}
+            />
 
             <Text style={styles.label}>Price</Text>
-            <TextInput style={styles.input} keyboardType="numeric" value={form.price} onChangeText={text => setForm({ ...form, price: text })} />
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={form.price}
+              onChangeText={(text) => setForm({ ...form, price: text })}
+            />
 
             <Text style={styles.label}>Description</Text>
-            <TextInput style={[styles.input, { height: 100 }]} multiline value={form.description} onChangeText={text => setForm({ ...form, description: text })} />
+            <TextInput
+              style={[styles.input, { height: 100 }]}
+              multiline
+              value={form.description}
+              onChangeText={(text) => setForm({ ...form, description: text })}
+            />
 
             <Text style={styles.label}>Location</Text>
-            <TextInput style={styles.input} value={form.location} onChangeText={text => setForm({ ...form, location: text })} />
+            <TextInput
+              style={styles.input}
+              value={form.location}
+              onChangeText={(text) => setForm({ ...form, location: text })}
+            />
           </View>
 
           {/* Status */}
           <View style={styles.card}>
             <Text style={styles.label}>Status</Text>
             <View style={styles.row}>
-              {["active", "inactive"].map(s => (
-                <TouchableOpacity key={s} style={[styles.chip, form.status === s && styles.chipActive]} onPress={() => setForm({ ...form, status: s })}>
+              {["active", "inactive"].map((s) => (
+                <TouchableOpacity
+                  key={s}
+                  style={[styles.chip, form.status === s && styles.chipActive]}
+                  onPress={() => setForm({ ...form, status: s })}
+                >
                   <Text style={form.status === s && { color: "#fff" }}>{s}</Text>
                 </TouchableOpacity>
               ))}
@@ -181,24 +235,33 @@ export default function SellScreen() {
 
           {/* Category & Subcategory */}
           <View style={styles.card}>
-       
             <Text style={styles.label}>Category</Text>
-                   <TouchableOpacity
-                     style={styles.input}
-                     onPress={() =>
-                       navigation.navigate("CategorySelect", {
-                         onSelect: (cat, subcat) => {
-                           setCategory(cat);
-                           setSubcategory(subcat);
-                         },
-                       })
-                     }
-                   >
-                     <Text>{category ? `${category.name} > ${subcategory.name}` : "Select Category"}</Text>
-                     <Icon name="chevron-down" size={20} />
-                   </TouchableOpacity>
-
-          
+            {loadingCategories ? (
+              <ActivityIndicator size="small" color="#28a745" />
+            ) : (
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() =>
+                  navigation.navigate("CategorySelect", {
+                    categories,
+                    onSelect: (cat, subcat) => {
+                      setCategory(cat);
+                      setSubcategory(subcat);
+                      setForm({
+                        ...form,
+                        category_id: cat.id,
+                        subcategory_id: subcat.id,
+                      });
+                    },
+                  })
+                }
+              >
+                <Text>
+                  {category ? `${category.name} > ${subcategory?.name}` : "Select Category"}
+                </Text>
+                <Icon name="chevron-down" size={20} />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Wholesale Tiers */}
@@ -206,9 +269,27 @@ export default function SellScreen() {
             <Text style={styles.label}>Wholesale Tiers</Text>
             {wholesaleTiers.map((item, index) => (
               <View key={index} style={styles.tierRow}>
-                <TextInput style={styles.tierInput} placeholder="Min" keyboardType="numeric" value={item.min_qty.toString()} onChangeText={v => updateTier(index, "min_qty", v)} />
-                <TextInput style={styles.tierInput} placeholder="Max" keyboardType="numeric" value={item.max_qty.toString()} onChangeText={v => updateTier(index, "max_qty", v)} />
-                <TextInput style={styles.tierInput} placeholder="Price" keyboardType="numeric" value={item.whole_seller_price} onChangeText={v => updateTier(index, "whole_seller_price", v)} />
+                <TextInput
+                  style={styles.tierInput}
+                  placeholder="Min"
+                  keyboardType="numeric"
+                  value={item.min_qty.toString()}
+                  onChangeText={(v) => updateTier(index, "min_qty", v)}
+                />
+                <TextInput
+                  style={styles.tierInput}
+                  placeholder="Max"
+                  keyboardType="numeric"
+                  value={item.max_qty.toString()}
+                  onChangeText={(v) => updateTier(index, "max_qty", v)}
+                />
+                <TextInput
+                  style={styles.tierInput}
+                  placeholder="Price"
+                  keyboardType="numeric"
+                  value={item.whole_seller_price}
+                  onChangeText={(v) => updateTier(index, "whole_seller_price", v)}
+                />
                 <TouchableOpacity onPress={() => removeTier(index)}>
                   <Icon name="close-circle" size={22} color="#dc3545" />
                 </TouchableOpacity>
@@ -221,8 +302,16 @@ export default function SellScreen() {
         </ScrollView>
 
         {/* Submit Button */}
-        <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={submitting}>
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Post Product</Text>}
+        <TouchableOpacity
+          style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
+          onPress={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitText}>Post Product</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -235,9 +324,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: "bold", marginVertical: 10 },
   card: { backgroundColor: "#fff", padding: 12, borderRadius: 12, marginBottom: 12, elevation: 2 },
   label: { fontSize: 12, fontWeight: "600", color: "#555", marginTop: 8 },
-  input: { backgroundColor: "#f9f9f9", borderRadius: 8, padding: 10, marginTop: 5 },
+  input: { backgroundColor: "#f9f9f9", borderRadius: 8, padding: 10, marginTop: 5, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   row: { flexDirection: "row", marginTop: 10 },
-  rowWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: 5 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#eee", marginRight: 6, marginTop: 6 },
   chipActive: { backgroundColor: "#28a745" },
   imageCard: { marginRight: 10, position: "relative" },
