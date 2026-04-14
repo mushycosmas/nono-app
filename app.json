@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "nono buy & sell",
-    "slug": "nono online shop",
+    "name": "Nono Buy & Sell",
+    "slug": "nono-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/nono.png",

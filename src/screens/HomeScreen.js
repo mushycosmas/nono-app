@@ -12,7 +12,7 @@ import HeaderSearch from "../components/home/HeaderSearch";
 import QuickActions from "../components/home/QuickActions";
 import CategoriesSection from "../components/home/CategoriesSection";
 import ProductItem from "../components/home/ProductItem";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import useHomeData from "../hooks/useHomeData";
 
@@ -54,7 +54,8 @@ export default function HomeScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.container}>
       <StatusBar backgroundColor="#28a745" barStyle="light-content" />
 
       {/* Quick Search Bar */}
@@ -100,10 +101,13 @@ export default function HomeScreen({ navigation }) {
         </View>
       )}
     </View>
+      </SafeAreaView>
+    
   );
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#28a745" },
   container: { flex: 1, backgroundColor: "#f5f5f5" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
