@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   FlatList,
-  TextInput,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,11 +18,10 @@ export default function LocationSelectScreen({ navigation }) {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState(null);
 
-  // ✅ FREE TEXT LOCATION
-  const [manualLocation, setManualLocation] = useState("");
+  // ✅ GET LOCATION FROM CONTEXT
+  const { location, setLocation } = useSell();
 
-  const { setLocation } = useSell();
-
+  // ================= LOAD LOCATIONS =================
   useEffect(() => {
     const load = async () => {
       try {
@@ -39,18 +37,42 @@ export default function LocationSelectScreen({ navigation }) {
     load();
   }, []);
 
+  // ================= ✅ AUTO PRESELECT =================
+  useEffect(() => {
+    if (!countries.length || !location) return;
+
+    // 🔹 Find country
+    const foundCountry = countries.find(
+      (c) => c.id === location?.country?.id
+    );
+
+    if (foundCountry) {
+      setSelectedCountry(foundCountry);
+
+      // 🔹 Find region
+      const foundRegion = foundCountry.regions?.find(
+        (r) => r.id === location?.region?.id
+      );
+
+      if (foundRegion) {
+        setSelectedRegion(foundRegion);
+      }
+    }
+  }, [countries, location]);
+
   // ================= FINAL SELECT =================
   const handleSelectDistrict = (district) => {
     setLocation({
       country: selectedCountry,
       region: selectedRegion,
-      district,
-      manualLocation: manualLocation.trim(), // ✅ free text included
+      district_id: district.id,
+      district_name: district.name,
     });
 
     navigation.goBack();
   };
 
+  // ================= CLICK HANDLER =================
   const handlePress = (item) => {
     if (!selectedCountry) {
       setSelectedCountry(item);
@@ -65,18 +87,19 @@ export default function LocationSelectScreen({ navigation }) {
     handleSelectDistrict(item);
   };
 
+  // ================= DATA =================
   const data = !selectedCountry
     ? countries
     : !selectedRegion
-    ? selectedCountry.regions
-    : selectedRegion.districts;
+    ? selectedCountry?.regions || []
+    : selectedRegion?.districts || [];
 
+  // ================= UI =================
   return (
     <SafeAreaView style={styles.container}>
-
-      {/* LIST */}
+      {/* LOADING */}
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator size="large" />
       ) : (
         <FlatList
           data={data}
@@ -104,9 +127,6 @@ export default function LocationSelectScreen({ navigation }) {
           <Text style={styles.back}>← Back to Countries</Text>
         </TouchableOpacity>
       )}
-
-     
-
     </SafeAreaView>
   );
 }
@@ -130,26 +150,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: "#007bff",
     fontWeight: "600",
-  },
-
-  card: {
-    marginTop: 15,
-    padding: 12,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    elevation: 2,
-  },
-
-  label: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#555",
-    marginBottom: 5,
-  },
-
-  input: {
-    backgroundColor: "#f9f9f9",
-    padding: 10,
-    borderRadius: 8,
   },
 });

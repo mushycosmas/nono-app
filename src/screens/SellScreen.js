@@ -33,6 +33,7 @@ export default function SellScreen() {
     newImages,
     setNewImages,
     wholesaleTiers,
+    setWholesaleTiers,
     addTier,
     updateTier,
     removeTier,
@@ -45,6 +46,9 @@ export default function SellScreen() {
 
   const [manualLocation, setManualLocation] = useState("");
 
+  // ✅ FIX: missing state for preview
+  const [locationPreview, setLocationPreview] = useState(null);
+
   // ================= SYNC =================
   useEffect(() => {
     if (category?.id && subcategory?.id) {
@@ -55,20 +59,26 @@ export default function SellScreen() {
       }));
     }
 
-    if (location?.district?.id) {
+    if (location?.district_id) {
+      // ✅ preview UI
+      setLocationPreview({
+        id: location.district_id,
+        name:
+          `${location.country?.name || ""} > ` +
+          `${location.region?.name || ""} > ` +
+          `${location.district_name || ""}`,
+      });
+
+      // ✅ form update
       setForm((prev) => ({
         ...prev,
-        district_id: location.district.id,
+        district_id: location.district_id,
       }));
     }
   }, [category, subcategory, location]);
 
   // ================= SUBMIT =================
   const handleSubmit = async () => {
-    // console.log("FORM:", form);
-    // console.log("WHOLESALE:", wholesaleTiers);
-    // console.log("IMAGES:", newImages.length);
-
     if (!form.name || !form.price) {
       return Alert.alert("Error", "Name and price required");
     }
@@ -92,16 +102,9 @@ export default function SellScreen() {
     try {
       const formData = new FormData();
 
-      // ================= REQUIRED FIELDS =================
       formData.append("name", String(form.name));
       formData.append("price", String(form.price));
-
-      // 🔥 FIXED (MAIN ERROR)
-      formData.append(
-        "product_description",
-        String(form.description || "")
-      );
-
+      formData.append("product_description", String(form.description || ""));
       formData.append("location", finalLocation);
       formData.append("status", form.status || "active");
       formData.append("category_id", String(form.category_id));
@@ -109,19 +112,12 @@ export default function SellScreen() {
       formData.append("district_id", String(form.district_id || ""));
       formData.append("user_id", "1");
 
-      // ================= WHOLESALE (SAFE) =================
-      const safeWholesale = (wholesaleTiers || []).map((t) => ({
-        min_qty: Number(t.min_qty || 1),
-        max_qty: Number(t.max_qty || 1),
-        whole_seller_price: String(t.whole_seller_price || "0"),
-      }));
+      formData.append(
+        "wholesale_tiers",
+        JSON.stringify(wholesaleTiers || [])
+      );
 
-      formData.append("wholesale_tiers", JSON.stringify(safeWholesale));
-
-      // ================= IMAGES =================
       newImages.forEach((img, i) => {
-        console.log("IMAGE:", img.uri);
-
         formData.append("images[]", {
           uri: img.uri,
           type: "image/jpeg",
@@ -136,15 +132,12 @@ export default function SellScreen() {
 
       const data = await res.json();
 
-      console.log("RESPONSE:", data);
-
       if (!res.ok) {
         return Alert.alert("Error", data.message || "Failed to post");
       }
 
       Alert.alert("Success", "Product posted successfully!");
 
-      // ================= RESET CLEAN =================
       resetSell?.();
       resetForm?.();
 
@@ -161,15 +154,27 @@ export default function SellScreen() {
 
       setNewImages([]);
       setManualLocation("");
+      setLocationPreview(null);
+
+      setWholesaleTiers([
+        { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+      ]);
 
       navigation.navigate("MyAds");
-
     } catch (err) {
-      console.log("ERROR:", err);
+      console.log(err);
       Alert.alert("Error", "Network error");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // ================= ADD TIER =================
+  const handleAddTier = () => {
+    setWholesaleTiers((prev) => [
+      ...prev,
+      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+    ]);
   };
 
   return (
@@ -190,9 +195,10 @@ export default function SellScreen() {
             styles={styles}
           />
 
+          {/* ✅ FIX: use preview instead of raw location */}
           <LocationCountry
             navigation={navigation}
-            location={location}
+            location={locationPreview}
             styles={styles}
           />
 
@@ -212,7 +218,7 @@ export default function SellScreen() {
 
           <WholesalePriceSection
             wholesaleTiers={wholesaleTiers || []}
-            addTier={addTier}
+            addTier={handleAddTier}
             updateTier={updateTier}
             removeTier={removeTier}
             styles={styles}
@@ -243,7 +249,7 @@ export default function SellScreen() {
 }
 
 
-
+// ================= STYLES =================
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f5f5f5" },
   container: { flex: 1, paddingHorizontal: 15 },

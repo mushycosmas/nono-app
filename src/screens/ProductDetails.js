@@ -13,8 +13,9 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
-import { fetchProducts } from "../api/api";
+import { fetchProducts ,incrementAdView} from "../api/api";
 import ProductItem from "../components/home/ProductItem";
+  
 
 const { width } = Dimensions.get("window");
 const BASE_URL = "https://nono.co.tz";
@@ -67,12 +68,17 @@ export default function ProductDetails({ route, navigation }) {
   }, [product.id, subcategoryId]);
 
   // ---------------- LOAD PRODUCT DETAILS ----------------
-  useEffect(() => {
-    setLoadingDetails(true);
-    // simulate network load
-    setTimeout(() => setLoadingDetails(false), 500); 
-    loadSimilarProducts();
-  }, [product, loadSimilarProducts]);
+ useEffect(() => {
+  setLoadingDetails(true);
+
+  setTimeout(() => setLoadingDetails(false), 500);
+
+  loadSimilarProducts();
+
+  if (product?.slug) {
+    incrementAdView(product.slug);
+  }
+ }, [product]);
 
   // ---------------- NAVIGATE TO ANOTHER PRODUCT ----------------
   const handleSelectProduct = (item) => {

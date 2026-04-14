@@ -13,23 +13,28 @@ import * as ImagePicker from "expo-image-picker";
 
 const { width } = Dimensions.get("window");
 const IMAGE_SIZE = (width - 80) / 3;
+const BASE_URL = "https://nono.co.tz";
 
 export default function ImagePickerSection({
   newImages = [],
   setNewImages,
-  removeNewImage,
+  existingImages = [],
+  setExistingImages,
   styles,
 }) {
   const MAX_IMAGES = 10;
-  const remainingSlots = MAX_IMAGES - newImages.length;
 
-  // ✅ PICK IMAGES (INSIDE COMPONENT = SAFER)
+  const allImagesCount = newImages.length + existingImages.length;
+  const remainingSlots = MAX_IMAGES - allImagesCount;
+
+  // ================= PICK IMAGES =================
   const pickImages = async () => {
-    if (newImages.length >= MAX_IMAGES) {
+    if (allImagesCount >= MAX_IMAGES) {
       return Alert.alert("Limit reached", "Maximum 10 images allowed");
     }
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
       return Alert.alert("Permission required", "Allow gallery access");
@@ -39,7 +44,7 @@ export default function ImagePickerSection({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.7,
-      selectionLimit: remainingSlots, // ✅ prevent overflow
+      selectionLimit: remainingSlots,
     });
 
     if (!result.canceled) {
@@ -47,13 +52,31 @@ export default function ImagePickerSection({
     }
   };
 
-  // ✅ SAFE REMOVE
-  const handleRemove = (index) => {
-    if (removeNewImage) {
-      removeNewImage(index);
-    } else {
-      setNewImages((prev) => prev.filter((_, i) => i !== index));
+  // ================= REMOVE NEW IMAGE =================
+  const removeNew = (index) => {
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ================= REMOVE EXISTING IMAGE =================
+  const removeExisting = (index) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ================= RENDER URL =================
+  const getImageUrl = (img) => {
+    if (!img) return null;
+
+    // new image
+    if (img.uri) return img.uri;
+
+    // existing image string
+    if (typeof img === "string") {
+      return img.startsWith("http")
+        ? img
+        : `${BASE_URL}${img}`;
     }
+
+    return null;
   };
 
   return (
@@ -62,13 +85,9 @@ export default function ImagePickerSection({
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <Text style={[styles.label, { fontSize: 16 }]}>Photos</Text>
         <Text style={{ fontSize: 12, color: "#666" }}>
-          {newImages.length}/{MAX_IMAGES}
+          {allImagesCount}/{MAX_IMAGES}
         </Text>
       </View>
-
-      <Text style={{ fontSize: 12, color: "#888", marginTop: 5 }}>
-        Add clear photos (max 10)
-      </Text>
 
       {/* IMAGES */}
       <ScrollView
@@ -76,9 +95,41 @@ export default function ImagePickerSection({
         showsHorizontalScrollIndicator={false}
         style={{ marginTop: 12 }}
       >
+        {/* EXISTING IMAGES */}
+        {existingImages.map((img, idx) => (
+          <View
+            key={`old-${idx}`}
+            style={{
+              marginRight: 10,
+              borderRadius: 12,
+              overflow: "hidden",
+            }}
+          >
+            <Image
+              source={{ uri: getImageUrl(img) }}
+              style={{ width: IMAGE_SIZE, height: IMAGE_SIZE }}
+            />
+
+            <TouchableOpacity
+              onPress={() => removeExisting(idx)}
+              style={{
+                position: "absolute",
+                top: 6,
+                right: 6,
+                backgroundColor: "rgba(0,0,0,0.6)",
+                borderRadius: 20,
+                padding: 4,
+              }}
+            >
+              <Icon name="close" size={14} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        {/* NEW IMAGES */}
         {newImages.map((img, idx) => (
           <View
-            key={idx}
+            key={`new-${idx}`}
             style={{
               marginRight: 10,
               borderRadius: 12,
@@ -90,9 +141,8 @@ export default function ImagePickerSection({
               style={{ width: IMAGE_SIZE, height: IMAGE_SIZE }}
             />
 
-            {/* REMOVE */}
             <TouchableOpacity
-              onPress={() => handleRemove(idx)}
+              onPress={() => removeNew(idx)}
               style={{
                 position: "absolute",
                 top: 6,

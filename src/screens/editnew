@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
+  View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import {
   useNavigation,
@@ -21,36 +23,40 @@ import WholesalePriceSection from "../components/sell/WholesalePriceSection";
 import LocationSection from "../components/sell/LocationSection";
 import LocationCountry from "../components/sell/LocationCountry";
 
-import { useEditProduct } from "../hooks/useEditProduct";
 import { useSell } from "../contexts/SellContext";
+
+const BASE_URL = "https://nono.co.tz";
 
 export default function EditProductScreen() {
   const navigation = useNavigation();
   const route = useRoute();
 
+  // ✅ CONTEXT
   const {
     location,
     category: ctxCategory,
     subcategory: ctxSubcategory,
     setLocation,
-    setFullLocation,
   } = useSell();
 
-  const { product = {}, category, subcategory } = route.params || {};
-
-  // ✅ USE HOOK (MAIN CHANGE)
   const {
-    form,
-    setForm,
-    existingImages,
-    setExistingImages,
-    newImages,
-    setNewImages,
-    wholesaleTiers,
-    setWholesaleTiers,
-    submitting,
-    updateProduct,
-  } = useEditProduct(product);
+    product = {},
+    category,
+    subcategory,
+    district,
+    images,
+  } = route.params || {};
+
+  // ================= FORM =================
+  const [form, setForm] = useState({
+    name: product.name || "",
+    price: String(product.price || ""),
+    description: product.product_description || "",
+    location: product.location || "",
+    status: product.status || "active",
+    category_id: String(product.category_id || ""),
+    subcategory_id: String(product.subcategory_id || ""),
+  });
 
   // ================= PREVIEW =================
   const [categoryPreview, setCategoryPreview] = useState(
@@ -67,42 +73,26 @@ export default function EditProductScreen() {
         : null)
   );
 
-  const [locationPreview, setLocationPreview] = useState(null);
+  const [locationPreview, setLocationPreview] = useState(
+    district ||
+      (product.district_id
+        ? { id: product.district_id, name: product.district_name }
+        : null)
+  );
 
-  // ================= LOCATION PRELOAD =================
-  useEffect(() => {
-    if (product?.district_id) {
-      const fullLocation = {
-        country: product.country || null,
-        region: product.region || null,
-        district_id: product.district_id,
-        district_name: product.district_name || "",
-      };
-
-      setFullLocation(fullLocation);
-
-      setLocationPreview({
-        id: product.district_id,
-        name:
-          `${product.country?.name || ""} > ` +
-          `${product.region?.name || ""} > ` +
-          `${product.district_name || ""}`,
-      });
-    }
-  }, [product]);
-
-  // ================= SYNC =================
+  // ================= 🔥 MAIN FIX =================
   useFocusEffect(
     useCallback(() => {
       // CATEGORY
       if (ctxCategory && ctxCategory.id !== categoryPreview?.id) {
         setCategoryPreview(ctxCategory);
-        setForm((p) => ({
-          ...p,
+        setSubcategoryPreview(null);
+
+        setForm((prev) => ({
+          ...prev,
           category_id: String(ctxCategory.id),
           subcategory_id: "",
         }));
-        setSubcategoryPreview(null);
       }
 
       // SUBCATEGORY
@@ -111,34 +101,146 @@ export default function EditProductScreen() {
         ctxSubcategory.id !== subcategoryPreview?.id
       ) {
         setSubcategoryPreview(ctxSubcategory);
-        setForm((p) => ({
-          ...p,
+
+        setForm((prev) => ({
+          ...prev,
           subcategory_id: String(ctxSubcategory.id),
         }));
       }
 
       // LOCATION
-      if (location?.district_id) {
-        if (location.district_id !== locationPreview?.id) {
-          setLocationPreview({
-            id: location.district_id,
-            name:
-              `${location.country?.name || ""} > ` +
-              `${location.region?.name || ""} > ` +
-              `${location.district_name || ""}`,
-          });
-        }
+      if (
+        location?.district &&
+        location.district.id !== locationPreview?.id
+      ) {
+        setLocationPreview(location.district);
+
+        setForm((prev) => ({
+          ...prev,
+          location:
+            location.manualLocation || location.district.name,
+        }));
       }
-    }, [location, ctxCategory, ctxSubcategory, locationPreview])
+    }, [location, ctxCategory, ctxSubcategory])
   );
+
+  // ================= IMAGES =================
+  const [existingImages, setExistingImages] = useState(
+    (images || product.images || []).map((img) =>
+      typeof img === "string" && img.startsWith("http")
+        ? img
+        : `${BASE_URL}${img}`
+    )
+  );
+
+  const [newImages, setNewImages] = useState([]);
+
+  const [submitting, setSubmitting] = useState(false);
+
+  // ================= WHOLESALE =================
+  const [wholesaleTiers, setWholesaleTiers] = useState(
+    Array.isArray(product.wholesale_tiers) &&
+      product.wholesale_tiers.length
+      ? product.wholesale_tiers
+      : [{ min_qty: 1, max_qty: 5, whole_seller_price: "" }]
+  );
+
+  const addTier = () => {
+    setWholesaleTiers((prev) => [
+      ...prev,
+      { min_qty: 1, max_qty: 5, whole_seller_price: "" },
+    ]);
+  };
+
+  const updateTier = (index, field, value) => {
+    setWholesaleTiers((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const removeTier = (index) => {
+    setWholesaleTiers((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
+  };
 
   // ================= UPDATE =================
   const handleUpdate = async () => {
-    const success = await updateProduct({ locationPreview });
+    if (!form.name || !form.price || !form.location) {
+      return Alert.alert("Error", "Missing required fields");
+    }
 
-    if (success) {
+    setSubmitting(true);
+
+    try {
+      const formData = new FormData();
+
+      formData.append("name", form.name);
+      formData.append("price", form.price);
+      formData.append(
+        "product_description",
+        form.description || ""
+      );
+      formData.append("location", form.location);
+      formData.append("status", form.status);
+      formData.append("category_id", form.category_id);
+      formData.append("subcategory_id", form.subcategory_id);
+
+      if (locationPreview?.id) {
+        formData.append("district_id", locationPreview.id);
+      }
+
+      formData.append(
+        "wholesale_tiers",
+        JSON.stringify(wholesaleTiers || [])
+      );
+
+      existingImages.forEach((img) => {
+        const path =
+          typeof img === "string"
+            ? img.replace(BASE_URL, "")
+            : "";
+        if (path) formData.append("existingImages[]", path);
+      });
+
+      newImages.forEach((img, i) => {
+        formData.append("newImages[]", {
+          uri: img.uri,
+          type: "image/jpeg",
+          name: `img_${i}.jpg`,
+        });
+      });
+
+      const res = await fetch(
+        `${BASE_URL}/api/seller/products/${product.id}`,
+        {
+          method: "PUT",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return Alert.alert(
+          "Error",
+          data.message || "Update failed"
+        );
+      }
+
+      Alert.alert("Success", "Product updated");
+
+      // ✅ CLEAR CONTEXT
       setLocation(null);
+
       navigation.navigate("MyAds");
+    } catch (e) {
+      console.log(e);
+      Alert.alert("Error", "Network error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -166,31 +268,33 @@ export default function EditProductScreen() {
         <LocationCountry
           navigation={navigation}
           location={locationPreview}
+          setLocation={setLocationPreview}
           styles={styles}
         />
 
-        <LocationSection form={form} setForm={setForm} styles={styles} />
+        <LocationSection
+          form={form}
+          setForm={setForm}
+          styles={styles}
+        />
 
-        <ProductFormSection form={form} setForm={setForm} styles={styles} />
+        <ProductFormSection
+          form={form}
+          setForm={setForm}
+          styles={styles}
+        />
 
-        <StatusSection form={form} setForm={setForm} styles={styles} />
+        <StatusSection
+          form={form}
+          setForm={setForm}
+          styles={styles}
+        />
 
         <WholesalePriceSection
           wholesaleTiers={wholesaleTiers}
-          addTier={() =>
-            setWholesaleTiers((p) => [
-              ...p,
-              { min_qty: 1, max_qty: 5, whole_seller_price: "" },
-            ])
-          }
-          updateTier={(i, f, v) => {
-            const copy = [...wholesaleTiers];
-            copy[i][f] = v;
-            setWholesaleTiers(copy);
-          }}
-          removeTier={(i) =>
-            setWholesaleTiers((p) => p.filter((_, idx) => idx !== i))
-          }
+          addTier={addTier}
+          updateTier={updateTier}
+          removeTier={removeTier}
           styles={styles}
         />
 
@@ -202,13 +306,16 @@ export default function EditProductScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.btnText}>Update Product</Text>
+            <Text style={styles.btnText}>
+              Update Product
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f5f5f5" },

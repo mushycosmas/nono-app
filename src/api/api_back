@@ -1,7 +1,5 @@
 const BASE_URL = "https://nono.co.tz";
 
-const viewedAds = new Set();
-
 // ------------------ GENERIC REQUEST ------------------
 const request = async (url, options = {}) => {
   try {
@@ -136,15 +134,4 @@ export const fetchLocations = async () => {
   }));
 
   return cache.locations;
-};
-
-
-export const incrementAdView = async (slug) => {
-  if (!slug || viewedAds.has(slug)) return null;
-
-  viewedAds.add(slug);
-
-  return await request(`/api/ads/${slug}/view`, {
-    method: "POST",
-  });
 };

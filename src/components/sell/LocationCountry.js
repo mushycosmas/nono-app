@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+
 export default function LocationCountry({
   navigation,
   location,
@@ -10,15 +11,11 @@ export default function LocationCountry({
     <View style={styles.card}>
       <TouchableOpacity
         style={styles.input}
-        onPress={() =>
-          navigation.navigate("LocationSelect", {
-            returnScreen: "Sell",
-          })
-        }
+        onPress={() => navigation.navigate("LocationSelect")}
       >
         <Text>
           {location
-            ? `${location.country?.name || ""} > ${location.region?.name || ""} > ${location.district?.name || "Select Location"}`
+            ? location.name 
             : "Select Location"}
         </Text>
 
