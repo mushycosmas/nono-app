@@ -142,7 +142,7 @@ export default function MyAdsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>My Ads</Text>
+      {/* <Text style={styles.header}>My Ads</Text> */}
       {loading ? (
         <View>{renderShimmer()}</View>
       ) : ads.length === 0 ? (
@@ -162,7 +162,7 @@ export default function MyAdsScreen() {
 // ---------------- STYLES ----------------
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f6fa", padding: 15 },
-  header: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
+  // header: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
   card: {
     flexDirection: "row",
     backgroundColor: "#fff",
