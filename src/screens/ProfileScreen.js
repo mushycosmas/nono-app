@@ -12,6 +12,7 @@ import {
 import Icon from "react-native-vector-icons/Ionicons";
 import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import { USER_ID, BASE_URL } from "../config/user";
+import NetworkWrapper from "../components/common/NetworkWrapper";
 
 export default function ProfileScreen({ navigation }) {
   const [userName, setUserName] = useState("");
@@ -88,7 +89,8 @@ export default function ProfileScreen({ navigation }) {
   if (loading) return <ProfileShimmer />;
 
   return (
-    <ScrollView style={styles.container}>
+    <NetworkWrapper>
+       <ScrollView style={styles.container}>
       {/* 🔥 HEADER */}
       <View style={styles.header}>
         <Image
@@ -182,6 +184,8 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </NetworkWrapper>
+   
   );
 }
 

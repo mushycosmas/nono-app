@@ -2,7 +2,10 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import BottomTabs from "./BottomTabs"; // your BottomTabs navigator
+import BottomTabs from "./BottomTabs";
+import AuthStack from "./AuthStack";
+
+// App screens
 import ProductDetails from "../screens/ProductDetails";
 import ProductsScreen from "../screens/ProductsScreen";
 import MyAdsScreen from "../screens/MyAdsScreen";
@@ -20,68 +23,67 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        {/* Bottom Tabs: Home, Cart, Contact */}
+
+        {/* 🌍 Main App (Always accessible) */}
         <Stack.Screen
           name="Main"
           component={BottomTabs}
           options={{ headerShown: false }}
         />
 
-        {/* Product details screen */}
+        {/* 🔐 Auth Screens (overlay flow) */}
+        <Stack.Screen
+          name="Auth"
+          component={AuthStack}
+          options={{ headerShown: false }}
+        />
+
+        {/* 📦 Other Screens */}
         <Stack.Screen
           name="ProductDetails"
           component={ProductDetails}
           options={{ title: "Product Details" }}
         />
 
-        {/* Products Screen */}
         <Stack.Screen
           name="Products"
           component={ProductsScreen}
           options={{ title: "Products" }}
         />
 
-        {/* My Ads */}
         <Stack.Screen name="MyAds" component={MyAdsScreen} />
-
-        {/* Settings */}
         <Stack.Screen name="Settings" component={SettingsScreen} />
-
-        {/* Edit Product */}
         <Stack.Screen name="EditProduct" component={EditProductScreen} />
-
-        {/* Search Results */}
         <Stack.Screen name="SearchResults" component={SearchResults} />
 
-        {/* Subcategory List */}
         <Stack.Screen
           name="SubcategoryList"
           component={SubcategoryList}
-          options={({ route }) => ({ title: route.params.categoryName })}
+          options={({ route }) => ({
+            title: route.params?.categoryName || "Subcategories",
+          })}
         />
 
-        {/* Category Products */}
         <Stack.Screen
           name="CategoryProducts"
           component={CategoryProducts}
           options={({ route }) => ({
-            title: route.params.subcategoryName || "Products",
+            title: route.params?.subcategoryName || "Products",
           })}
         />
-         {/* Category Select Screen */}
+
         <Stack.Screen
-          name="CategorySelect" // <-- This is now registered
+          name="CategorySelect"
           component={CategorySelectScreen}
           options={{ title: "Select Category" }}
         />
 
-        {/* LocationSelectScreen */}
-
         <Stack.Screen
-          name="LocationSelect" // <-- This is now registered
+          name="LocationSelect"
           component={LocationSelect}
-          options={{ title: "Select Category" }}
+          options={{ title: "Select Location" }}
         />
+
       </Stack.Navigator>
     </NavigationContainer>
   );

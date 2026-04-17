@@ -19,6 +19,7 @@ import StatusSection from "../components/sell/StatusSection";
 import WholesalePriceSection from "../components/sell/WholesalePriceSection";
 import LocationCountry from "../components/sell/LocationCountry";
 import LocationSection from "../components/sell/LocationSection";
+import NetworkWrapper from "../components/common/NetworkWrapper";
 
 import { useSell } from "../contexts/SellContext";
 
@@ -178,7 +179,9 @@ export default function SellScreen() {
   };
 
   return (
+    
     <SafeAreaView style={styles.safe}>
+      
       <View style={styles.container}>
         <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
 

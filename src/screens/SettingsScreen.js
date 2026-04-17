@@ -13,6 +13,7 @@ import {
 import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import * as ImagePicker from "expo-image-picker";
 import { USER_ID, BASE_URL } from "../config/user";
+import NetworkWrapper from "../components/common/NetworkWrapper";
 
 export default function SettingsScreen() {
   const [firstName, setFirstName] = useState("");
@@ -144,6 +145,7 @@ export default function SettingsScreen() {
   if (loading) return <SettingsShimmer />;
 
   return (
+    
     <ScrollView
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}

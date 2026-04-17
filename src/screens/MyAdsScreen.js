@@ -13,6 +13,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import { USER_ID, BASE_URL } from "../config/user";
 import { useNavigation } from "@react-navigation/native";
+import NetworkWrapper from "../components/common/NetworkWrapper";
 
 const { width } = Dimensions.get("window");
 
@@ -162,7 +163,7 @@ export default function MyAdsScreen() {
 // ---------------- STYLES ----------------
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f6fa", padding: 15 },
-  // header: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
+  header: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
   card: {
     flexDirection: "row",
     backgroundColor: "#fff",

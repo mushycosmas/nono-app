@@ -8,12 +8,13 @@ import {
   FlatList,
 } from "react-native";
 
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import HeaderSearch from "../components/home/HeaderSearch";
 import QuickActions from "../components/home/QuickActions";
 import CategoriesSection from "../components/home/CategoriesSection";
 import ProductItem from "../components/home/ProductItem";
-import { SafeAreaView } from "react-native-safe-area-context";
-
+import NetworkWrapper from "../components/common/NetworkWrapper";
 import useHomeData from "../hooks/useHomeData";
 
 export default function HomeScreen({ navigation }) {
@@ -29,7 +30,6 @@ export default function HomeScreen({ navigation }) {
     handleRefresh,
   } = useHomeData();
 
-  // Navigate to search results
   const handleSearch = (query) => {
     navigation.navigate("SearchResults", {
       query,
@@ -37,7 +37,6 @@ export default function HomeScreen({ navigation }) {
     });
   };
 
-  // Render each product
   const renderProduct = useCallback(
     ({ item }) => <ProductItem item={item} navigation={navigation} />,
     [navigation]
@@ -54,55 +53,56 @@ export default function HomeScreen({ navigation }) {
   }
 
   return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <StatusBar backgroundColor="#28a745" barStyle="light-content" />
 
-      {/* Quick Search Bar */}
-      <HeaderSearch
-        locations={locations}
-        selectedLocation={selectedLocation}
-        setSelectedLocation={setSelectedLocation}
-        onSearch={handleSearch}
-      />
+      <View style={styles.container}>
+        {/* Search Header */}
+        <HeaderSearch
+          locations={locations}
+          selectedLocation={selectedLocation}
+          setSelectedLocation={setSelectedLocation}
+          onSearch={handleSearch}
+        />
 
-      {/* Main Content */}
-      <FlatList
-        data={products}
-        keyExtractor={keyExtractor}
-        renderItem={renderProduct}
-        numColumns={2} // 2-column grid
-        showsVerticalScrollIndicator={false}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-        contentContainerStyle={styles.listContainer}
-        columnWrapperStyle={styles.columnWrapper} // spacing between product cards
-        ListHeaderComponent={
-          <>
-            {/* Quick Actions */}
-            <View style={styles.sectionSpacing}>
-              <QuickActions navigation={navigation} />
-            </View>
+        {/* Products */}
+        
+        <FlatList
+          data={products}
+          keyExtractor={keyExtractor}
+          renderItem={renderProduct}
+          numColumns={2}
+          showsVerticalScrollIndicator={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          contentContainerStyle={styles.listContainer}
+          columnWrapperStyle={styles.columnWrapper}
+          ListHeaderComponent={
+            <>
+              <View style={styles.sectionSpacing}>
+                <QuickActions navigation={navigation} />
+              </View>
 
-            {/* Categories */}
-            <View style={styles.sectionSpacing}>
-              <CategoriesSection categories={categories} navigation={navigation} />
-            </View>
-          </>
-        }
-      />
+              <View style={styles.sectionSpacing}>
+                <CategoriesSection
+                  categories={categories}
+                  navigation={navigation}
+                />
+              </View>
+            </>
+          }
+        />
 
-      {/* Loading indicator when fetching more */}
-      {loading && products.length > 0 && (
-        <View style={styles.loadingMore}>
-          <ActivityIndicator size="small" color="#28a745" />
-        </View>
-      )}
-    </View>
-      </SafeAreaView>
-    
+        {/* Loading more */}
+        {loading && products.length > 0 && (
+          <View style={styles.loadingMore}>
+            <ActivityIndicator size="small" color="#28a745" />
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -118,12 +118,12 @@ const styles = StyleSheet.create({
   },
 
   sectionSpacing: {
-    marginBottom: 20, // space between Quick Actions / Categories
+    marginBottom: 20, 
   },
 
   columnWrapper: {
-    justifyContent: "space-between", // space between product cards in row
-    marginBottom: 15, // vertical space between rows
+    justifyContent: "space-between", 
+    marginBottom: 15, 
   },
 
   loadingMore: {

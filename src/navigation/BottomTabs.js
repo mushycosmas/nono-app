@@ -1,59 +1,98 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/Ionicons';
+import React, { useCallback, useState } from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import Icon from "react-native-vector-icons/Ionicons";
 
-// ✅ Use STACKS (not screens)
-import HomeStack from "./HomeStack"; 
-import ProfileStack from './ProfileStack';
+import { useAuth } from "../contexts/AuthContext";
 
-// Optional (keep if you want later)
-// import SavedScreen from '../screens/SavedScreen';
-// import MessagesScreen from '../screens/MessagesScreen';
+// Screens
+import HomeStack from "./HomeStack";
+import ProfileStack from "./ProfileStack";
+import SellScreen from "../screens/SellScreen";
 
-import SellScreen from '../screens/SellScreen';
+// 🔥 Auth Bottom Sheet
+import AuthModal from "../screens/Auth/AuthModal";
 
 const Tab = createBottomTabNavigator();
 
 export default function BottomNavBar() {
+  const { user } = useAuth();
+  const navigation = useNavigation();
+
+  // 🔥 control bottom sheet
+  const [authVisible, setAuthVisible] = useState(false);
+  const [targetScreen, setTargetScreen] = useState(null);
+
+  // 🔒 Protect Sell/Profile
+  const handleProtectedRoute = useCallback(
+    (e, screen) => {
+      if (!user) {
+        e.preventDefault();
+
+        setTargetScreen(screen);
+        setAuthVisible(true); // 🚀 open bottom sheet
+      }
+    },
+    [user]
+  );
+
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#28a745',
-      }}
-    >
-      {/* ✅ Home uses HomeStack */}
-      <Tab.Screen
-        name="Home"
-        component={HomeStack}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Icon name="home" size={24} color={color} />
-          ),
+    <>
+      {/* ================= TAB NAV ================= */}
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: "#28a745",
+          tabBarInactiveTintColor: "#777",
         }}
-      />
+      >
+        {/* 🏠 HOME (PUBLIC) */}
+        <Tab.Screen
+          name="Home"
+          component={HomeStack}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <Icon name="home-outline" size={24} color={color} />
+            ),
+          }}
+        />
 
-      {/* ✅ Sell stays normal */}
-      <Tab.Screen
-        name="Sell"
-        component={SellScreen}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Icon name="add-circle" size={28} color={color} />
-          ),
-        }}
-      />
+        {/* 🔒 SELL */}
+        <Tab.Screen
+          name="Sell"
+          component={SellScreen}
+          listeners={{
+            tabPress: (e) => handleProtectedRoute(e, "Sell"),
+          }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <Icon name="add-circle-outline" size={28} color={color} />
+            ),
+          }}
+        />
 
-      {/* ✅ Profile uses ProfileStack */}
-      <Tab.Screen
-        name="Profile"
-        component={ProfileStack}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Icon name="person" size={24} color={color} />
-          ),
-        }}
+        {/* 🔒 PROFILE */}
+        <Tab.Screen
+          name="Profile"
+          component={ProfileStack}
+          listeners={{
+            tabPress: (e) => handleProtectedRoute(e, "Profile"),
+          }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <Icon name="person-outline" size={24} color={color} />
+            ),
+          }}
+        />
+      </Tab.Navigator>
+
+      {/* ================= AUTH MODAL ================= */}
+      <AuthModal
+        visible={authVisible}
+        onClose={() => setAuthVisible(false)}
+        navigation={navigation}
+        redirectTo={targetScreen} // optional future use
       />
-    </Tab.Navigator>
+    </>
   );
 }

@@ -1,5 +1,3 @@
-
-import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,44 +6,56 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
+import React, { useState } from "react";
 import Icon from "react-native-vector-icons/Ionicons";
 
-export default function LoginScreen({ navigation }) {
+export default function RegisterScreen({ navigation, route }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleLogin = () => {
-    if (!email || !password) {
+  const handleRegister = () => {
+    if (!email || !password || !confirmPassword) {
       Alert.alert("Error", "All fields are required");
       return;
     }
 
-    console.log({ email, password });
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters");
+      return;
+    }
 
-    Alert.alert("Success", "Logged in successfully");
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+
+    const redirectTo = route?.params?.redirectTo;
+
+    Alert.alert("Success", "Registered successfully");
+
+    navigation.replace(redirectTo || "Home");
   };
 
-  const handleSocialLogin = (type) => {
-    Alert.alert(`${type} Login`, "Coming soon...");
+  const handleSocialLogin = (provider) => {
+    Alert.alert(`${provider} Login`, "Coming soon...");
   };
 
   return (
     <View style={styles.container}>
-      {/* Title */}
-      <Text style={styles.title}>Welcome Back</Text>
-      <Text style={styles.subtitle}>Login to continue</Text>
+      {/* Header */}
+      <Text style={styles.title}>Create Account</Text>
+      <Text style={styles.subtitle}>Join and start selling today</Text>
 
-      {/* Email */}
+      {/* Inputs */}
       <TextInput
         placeholder="Email address"
         placeholderTextColor="#999"
         style={styles.input}
         value={email}
         onChangeText={setEmail}
-        keyboardType="email-address"
       />
 
-      {/* Password */}
       <TextInput
         placeholder="Password"
         placeholderTextColor="#999"
@@ -55,16 +65,18 @@ export default function LoginScreen({ navigation }) {
         onChangeText={setPassword}
       />
 
-      {/* Forgot Password */}
-      <TouchableOpacity
-        onPress={() => Alert.alert("Reset Password", "Feature coming soon")}
-      >
-        <Text style={styles.forgot}>Forgot Password?</Text>
-      </TouchableOpacity>
+      <TextInput
+        placeholder="Confirm Password"
+        placeholderTextColor="#999"
+        style={styles.input}
+        secureTextEntry
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+      />
 
-      {/* Login Button */}
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
+      {/* Primary Button */}
+      <TouchableOpacity style={styles.button} onPress={handleRegister}>
+        <Text style={styles.buttonText}>Create Account</Text>
       </TouchableOpacity>
 
       {/* Divider */}
@@ -76,7 +88,7 @@ export default function LoginScreen({ navigation }) {
 
       {/* Google Login */}
       <TouchableOpacity
-        style={[styles.socialButton, styles.google]}
+        style={[styles.socialButton, styles.googleButton]}
         onPress={() => handleSocialLogin("Google")}
       >
         <Icon name="logo-google" size={20} color="#DB4437" />
@@ -85,26 +97,27 @@ export default function LoginScreen({ navigation }) {
 
       {/* Facebook Login */}
       <TouchableOpacity
-        style={[styles.socialButton, styles.facebook]}
+        style={[styles.socialButton, styles.facebookButton]}
         onPress={() => handleSocialLogin("Facebook")}
       >
         <Icon name="logo-facebook" size={20} color="#fff" />
         <Text style={styles.facebookText}>Continue with Facebook</Text>
       </TouchableOpacity>
 
-      {/* Register Link */}
+      {/* Footer */}
       <Text style={styles.footerText}>
-        Don't have an account?{" "}
+        Already have an account?{" "}
         <Text
           style={styles.link}
-          onPress={() => navigation.replace("Register")}
+          onPress={() => navigation.replace("Login")}
         >
-          Register
+          Login
         </Text>
       </Text>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -134,13 +147,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: "#eee",
-  },
-
-  forgot: {
-    textAlign: "right",
-    color: "#28a745",
-    marginBottom: 10,
-    fontWeight: "500",
   },
 
   button: {
@@ -184,7 +190,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  google: {
+  googleButton: {
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#ddd",
@@ -195,7 +201,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  facebook: {
+  facebookButton: {
     backgroundColor: "#1877F2",
   },
 
