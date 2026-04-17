@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   View,
@@ -7,12 +6,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = () => {
     if (!email || !password) {
@@ -23,6 +26,9 @@ export default function LoginScreen({ navigation }) {
     console.log({ email, password });
 
     Alert.alert("Success", "Logged in successfully");
+
+    // ❌ DO NOT navigate manually to Home
+    // AuthContext should handle redirect automatically
   };
 
   const handleSocialLogin = (type) => {
@@ -30,93 +36,139 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Title */}
-      <Text style={styles.title}>Welcome Back</Text>
-      <Text style={styles.subtitle}>Login to continue</Text>
-
-      {/* Email */}
-      <TextInput
-        placeholder="Email address"
-        placeholderTextColor="#999"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
-
-      {/* Password */}
-      <TextInput
-        placeholder="Password"
-        placeholderTextColor="#999"
-        style={styles.input}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      {/* Forgot Password */}
-      <TouchableOpacity
-        onPress={() => Alert.alert("Reset Password", "Feature coming soon")}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.forgot}>Forgot Password?</Text>
-      </TouchableOpacity>
+        {/* ================= HEADER ================= */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.navigate("Main", {
+            screen: "HomeMain",
+          })}>
+            <Icon name="arrow-back" size={26} color="#111" />
+          </TouchableOpacity>
 
-      {/* Login Button */}
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
-      </TouchableOpacity>
+          <Text style={styles.headerTitle}>Login</Text>
 
-      {/* Divider */}
-      <View style={styles.divider}>
-        <View style={styles.line} />
-        <Text style={styles.or}>OR</Text>
-        <View style={styles.line} />
-      </View>
+          <View style={{ width: 26 }} />
+        </View>
 
-      {/* Google Login */}
-      <TouchableOpacity
-        style={[styles.socialButton, styles.google]}
-        onPress={() => handleSocialLogin("Google")}
-      >
-        <Icon name="logo-google" size={20} color="#DB4437" />
-        <Text style={styles.googleText}>Continue with Google</Text>
-      </TouchableOpacity>
+        <Text style={styles.subtitle}>Welcome back</Text>
 
-      {/* Facebook Login */}
-      <TouchableOpacity
-        style={[styles.socialButton, styles.facebook]}
-        onPress={() => handleSocialLogin("Facebook")}
-      >
-        <Icon name="logo-facebook" size={20} color="#fff" />
-        <Text style={styles.facebookText}>Continue with Facebook</Text>
-      </TouchableOpacity>
+        {/* ================= EMAIL ================= */}
+        <TextInput
+          placeholder="Email address"
+          placeholderTextColor="#999"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+        />
 
-      {/* Register Link */}
-      <Text style={styles.footerText}>
-        Don't have an account?{" "}
-        <Text
-          style={styles.link}
-          onPress={() => navigation.replace("Register")}
+        {/* ================= PASSWORD ================= */}
+        <View style={styles.passwordBox}>
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor="#999"
+            style={styles.passwordInput}
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Icon
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={22}
+              color="#666"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ================= FORGOT PASSWORD ================= */}
+        <TouchableOpacity
+          onPress={() => Alert.alert("Reset Password", "Feature coming soon")}
         >
-          Register
+          <Text style={styles.forgot}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        {/* ================= LOGIN BUTTON ================= */}
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
+
+        {/* ================= CONTINUE AS GUEST ================= */}
+         <TouchableOpacity
+           style={styles.guestButton}
+              onPress={() => navigation.navigate("Main", {
+               screen: "HomeMain",
+           })}
+        >
+          <Icon name="home-outline" size={18} color="#28a745" />
+          <Text style={styles.guestText}>Continue as Guest</Text>
+        </TouchableOpacity>
+
+        {/* ================= DIVIDER ================= */}
+        <View style={styles.divider}>
+          <View style={styles.line} />
+          <Text style={styles.or}>OR</Text>
+          <View style={styles.line} />
+        </View>
+
+        {/* ================= GOOGLE ================= */}
+        <TouchableOpacity
+          style={[styles.socialButton, styles.google]}
+          onPress={() => handleSocialLogin("Google")}
+        >
+          <Icon name="logo-google" size={20} color="#DB4437" />
+          <Text style={styles.googleText}>Continue with Google</Text>
+        </TouchableOpacity>
+
+        {/* ================= FACEBOOK ================= */}
+        <TouchableOpacity
+          style={[styles.socialButton, styles.facebook]}
+          onPress={() => handleSocialLogin("Facebook")}
+        >
+          <Icon name="logo-facebook" size={20} color="#fff" />
+          <Text style={styles.facebookText}>Continue with Facebook</Text>
+        </TouchableOpacity>
+
+        {/* ================= REGISTER ================= */}
+        <Text style={styles.footerText}>
+          Don't have an account?{" "}
+          <Text
+            style={styles.link}
+            onPress={() => navigation.replace("Register")}
+          >
+            Register
+          </Text>
         </Text>
-      </Text>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#FAFAFA",
     padding: 20,
+    backgroundColor: "#FAFAFA",
+    flexGrow: 1,
     justifyContent: "center",
   },
 
-  title: {
-    fontSize: 28,
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+
+  headerTitle: {
+    fontSize: 22,
     fontWeight: "700",
-    textAlign: "center",
     color: "#111",
   },
 
@@ -134,6 +186,22 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: "#eee",
+  },
+
+  passwordBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#eee",
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+  },
+
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 15,
   },
 
   forgot: {
@@ -155,6 +223,19 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+
+  guestButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 15,
+    gap: 8,
+  },
+
+  guestText: {
+    color: "#28a745",
+    fontWeight: "600",
   },
 
   divider: {
