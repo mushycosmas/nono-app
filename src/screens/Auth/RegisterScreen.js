@@ -11,8 +11,11 @@ import {
   Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import useRegister from "../../hooks/auth/useRegister";
 
 export default function RegisterScreen({ navigation, route }) {
+  const { register, loading } = useRegister();
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,7 +27,12 @@ export default function RegisterScreen({ navigation, route }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleRegister = () => {
+  const goHome = () => {
+    navigation.navigate("Main", { screen: "HomeMain" });
+  };
+
+  // ================= REGISTER =================
+  const handleRegister = async () => {
     if (!firstName || !lastName || !email || !phone || !password || !confirmPassword) {
       Alert.alert("Error", "All fields are required");
       return;
@@ -40,21 +48,28 @@ export default function RegisterScreen({ navigation, route }) {
       return;
     }
 
-    const redirectTo = route?.params?.redirectTo;
-
-    console.log({
-      firstName,
-      lastName,
-      email,
-      phone,
-      password,
-    });
-
-    Alert.alert("Success", "Account created successfully");
-
-       navigation.navigate("Main", {
-       screen: "HomeMain",
+    try {
+      const res = await register({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone,
+        password,
       });
+
+      Alert.alert("Success", "Account created successfully");
+
+      console.log("TOKEN:", res?.token);
+      console.log("USER:", res?.user);
+
+      navigation.navigate("Main", { screen: "HomeMain" });
+
+    } catch (err) {
+      Alert.alert(
+        "Registration Failed",
+        err?.message || "Something went wrong"
+      );
+    }
   };
 
   const handleSocialLogin = (type) => {
@@ -73,9 +88,7 @@ export default function RegisterScreen({ navigation, route }) {
       >
         {/* ================= HEADER ================= */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Main", {
-          screen: "HomeMain",
-          })}>
+          <TouchableOpacity onPress={goHome}>
             <Icon name="arrow-back" size={26} color="#111" />
           </TouchableOpacity>
 
@@ -168,8 +181,14 @@ export default function RegisterScreen({ navigation, route }) {
         </View>
 
         {/* ================= BUTTON ================= */}
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Create Account</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Creating..." : "Create Account"}
+          </Text>
         </TouchableOpacity>
 
         {/* ================= DIVIDER ================= */}
@@ -179,7 +198,7 @@ export default function RegisterScreen({ navigation, route }) {
           <View style={styles.line} />
         </View>
 
-        {/* ================= GOOGLE ================= */}
+        {/* ================= SOCIAL ================= */}
         <TouchableOpacity
           style={[styles.socialButton, styles.google]}
           onPress={() => handleSocialLogin("Google")}
@@ -188,7 +207,6 @@ export default function RegisterScreen({ navigation, route }) {
           <Text style={styles.googleText}>Continue with Google</Text>
         </TouchableOpacity>
 
-        {/* ================= FACEBOOK ================= */}
         <TouchableOpacity
           style={[styles.socialButton, styles.facebook]}
           onPress={() => handleSocialLogin("Facebook")}
@@ -212,6 +230,7 @@ export default function RegisterScreen({ navigation, route }) {
   );
 }
 
+/* ================= STYLES (UNCHANGED UI) ================= */
 const styles = StyleSheet.create({
   container: {
     padding: 20,

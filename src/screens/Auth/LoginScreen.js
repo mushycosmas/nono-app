@@ -11,24 +11,37 @@ import {
   Platform,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import useLogin from "../../hooks/auth/useLogin";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
+  const { login, loading } = useLogin();
+
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "All fields are required");
       return;
     }
 
-    console.log({ email, password });
+    try {
+      const res = await login({ email, password });
 
-    Alert.alert("Success", "Logged in successfully");
+      Alert.alert("Success", "Logged in successfully");
 
-    // ❌ DO NOT navigate manually to Home
-    // AuthContext should handle redirect automatically
+      console.log("TOKEN:", res.token);
+      console.log("USER:", res.user);
+    } catch (err) {
+      Alert.alert("Login Failed", err.message);
+    }
+  };
+
+  const goHome = () => {
+    navigation.navigate("Main", {
+      screen: "HomeMain",
+    });
   };
 
   const handleSocialLogin = (type) => {
@@ -40,15 +53,11 @@ export default function LoginScreen({ navigation }) {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ================= HEADER ================= */}
+      <ScrollView contentContainerStyle={styles.container}>
+
+        {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Main", {
-            screen: "HomeMain",
-          })}>
+          <TouchableOpacity onPress={goHome}>
             <Icon name="arrow-back" size={26} color="#111" />
           </TouchableOpacity>
 
@@ -59,7 +68,7 @@ export default function LoginScreen({ navigation }) {
 
         <Text style={styles.subtitle}>Welcome back</Text>
 
-        {/* ================= EMAIL ================= */}
+        {/* EMAIL */}
         <TextInput
           placeholder="Email address"
           placeholderTextColor="#999"
@@ -69,7 +78,7 @@ export default function LoginScreen({ navigation }) {
           keyboardType="email-address"
         />
 
-        {/* ================= PASSWORD ================= */}
+        {/* PASSWORD */}
         <View style={styles.passwordBox}>
           <TextInput
             placeholder="Password"
@@ -89,37 +98,38 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* ================= FORGOT PASSWORD ================= */}
+        {/* FORGOT PASSWORD */}
         <TouchableOpacity
           onPress={() => Alert.alert("Reset Password", "Feature coming soon")}
         >
           <Text style={styles.forgot}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        {/* ================= LOGIN BUTTON ================= */}
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
+        {/* LOGIN BUTTON */}
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Logging in..." : "Login"}
+          </Text>
         </TouchableOpacity>
 
-        {/* ================= CONTINUE AS GUEST ================= */}
-         <TouchableOpacity
-           style={styles.guestButton}
-              onPress={() => navigation.navigate("Main", {
-               screen: "HomeMain",
-           })}
-        >
+        {/* CONTINUE AS GUEST */}
+        <TouchableOpacity style={styles.guestButton} onPress={goHome}>
           <Icon name="home-outline" size={18} color="#28a745" />
           <Text style={styles.guestText}>Continue as Guest</Text>
         </TouchableOpacity>
 
-        {/* ================= DIVIDER ================= */}
+        {/* DIVIDER */}
         <View style={styles.divider}>
           <View style={styles.line} />
           <Text style={styles.or}>OR</Text>
           <View style={styles.line} />
         </View>
 
-        {/* ================= GOOGLE ================= */}
+        {/* GOOGLE */}
         <TouchableOpacity
           style={[styles.socialButton, styles.google]}
           onPress={() => handleSocialLogin("Google")}
@@ -128,7 +138,7 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.googleText}>Continue with Google</Text>
         </TouchableOpacity>
 
-        {/* ================= FACEBOOK ================= */}
+        {/* FACEBOOK */}
         <TouchableOpacity
           style={[styles.socialButton, styles.facebook]}
           onPress={() => handleSocialLogin("Facebook")}
@@ -137,16 +147,21 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.facebookText}>Continue with Facebook</Text>
         </TouchableOpacity>
 
-        {/* ================= REGISTER ================= */}
+        {/* REGISTER */}
         <Text style={styles.footerText}>
           Don't have an account?{" "}
           <Text
             style={styles.link}
-            onPress={() => navigation.replace("Register")}
+            onPress={() =>
+              navigation.navigate("Main", {
+                screen: "Register",
+              })
+            }
           >
             Register
           </Text>
         </Text>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
