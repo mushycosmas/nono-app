@@ -9,49 +9,66 @@ export default function CategoriesSection({ categories, navigation }) {
 
       <FlatList
         data={categories}
-        numColumns={4} // 4 categories per row
-        scrollEnabled={false} // handled by parent FlatList
+        numColumns={4}
+        scrollEnabled={false}
         keyExtractor={(item) => item.id.toString()}
-        columnWrapperStyle={styles.row} // spacing between columns
+
+        // ✅ FIX 1: equal left & right spacing
+        contentContainerStyle={styles.container}
+
+        // ✅ FIX 2: spacing between rows
+        columnWrapperStyle={styles.row}
+
         renderItem={({ item }) => (
-          <CategoryCard
-            name={item.name}
-            icon={item.icon}
-            onPress={() =>
-              navigation.navigate('SubcategoryList', {
-                categoryId: item.id,
-                categoryName: item.name,
-                subcategories: item.subcategories || [],
-              })
-            }
-          />
+          <View style={styles.item}>
+            <CategoryCard
+              name={item.name}
+              icon={item.icon}
+              onPress={() =>
+                navigation.navigate('SubcategoryList', {
+                  categoryId: item.id,
+                  categoryName: item.name,
+                  subcategories: item.subcategories || [],
+                })
+              }
+            />
+          </View>
         )}
       />
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   section: {
     marginTop: 15,
-    paddingHorizontal: 15,
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3, // Android shadow
+
+    // ✅ FIX 3: equal spacing left & right
+    paddingHorizontal: 10,
+
+    elevation: 3,
   },
+
   title: {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 10,
     color: '#333',
   },
+
+  container: {
+    paddingBottom: 10,
+  },
+
   row: {
-    justifyContent: 'space-between',
-    marginBottom: 15,
+    justifyContent: 'space-between', // ✅ even spacing
+    marginBottom: 12,
+  },
+
+  item: {
+    flex: 1,               // ✅ prevents overflow
+    alignItems: 'center',  // center each card
   },
 });

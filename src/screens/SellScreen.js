@@ -20,10 +20,12 @@ import WholesalePriceSection from "../components/sell/WholesalePriceSection";
 import LocationCountry from "../components/sell/LocationCountry";
 import LocationSection from "../components/sell/LocationSection";
 import NetworkWrapper from "../components/common/NetworkWrapper";
+import { BASE_URL } from "../config/user";
+import { useAuth } from "../contexts/AuthContext";
 
 import { useSell } from "../contexts/SellContext";
 
-const BASE_URL = "https://nono.co.tz";
+
 
 export default function SellScreen() {
   const navigation = useNavigation();
@@ -44,11 +46,12 @@ export default function SellScreen() {
   } = useSellForm();
 
   const { category, subcategory, location, resetSell } = useSell();
-
-  const [manualLocation, setManualLocation] = useState("");
+     const { user, token } = useAuth();
+     const USER_ID = user?.id;
+     const [manualLocation, setManualLocation] = useState("");
 
   // ✅ FIX: missing state for preview
-  const [locationPreview, setLocationPreview] = useState(null);
+     const [locationPreview, setLocationPreview] = useState(null);
 
   // ================= SYNC =================
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function SellScreen() {
       formData.append("category_id", String(form.category_id));
       formData.append("subcategory_id", String(form.subcategory_id));
       formData.append("district_id", String(form.district_id || ""));
-      formData.append("user_id", "1");
+      formData.append("user_id", USER_ID);
 
       formData.append(
         "wholesale_tiers",
@@ -126,7 +129,7 @@ export default function SellScreen() {
         });
       });
 
-      const res = await fetch(`${BASE_URL}/api/ads`, {
+      const res = await fetch(`${BASE_URL}/ads`, {
         method: "POST",
         body: formData,
       });

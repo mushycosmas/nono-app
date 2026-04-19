@@ -14,6 +14,7 @@ import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
 import * as ImagePicker from "expo-image-picker";
 import { USER_ID, BASE_URL } from "../config/user";
 import NetworkWrapper from "../components/common/NetworkWrapper";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SettingsScreen() {
   const [firstName, setFirstName] = useState("");
@@ -22,6 +23,8 @@ export default function SettingsScreen() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [avatar, setAvatar] = useState(null);
+   const { user, token } = useAuth();
+    const USER_ID = user?.id;
 
   const [loading, setLoading] = useState(true);
 

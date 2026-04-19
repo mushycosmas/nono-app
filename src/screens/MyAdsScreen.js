@@ -11,16 +11,17 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
-import { USER_ID, BASE_URL } from "../config/user";
+import { BASE_URL } from "../config/user";
 import { useNavigation } from "@react-navigation/native";
-import NetworkWrapper from "../components/common/NetworkWrapper";
-
+import { useAuth } from "../contexts/AuthContext";
 const { width } = Dimensions.get("window");
 
 export default function MyAdsScreen() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
+    const { user, token } = useAuth();
+    const USER_ID = user?.id;
 
   useEffect(() => {
     fetchAds();

@@ -1,30 +1,23 @@
-import { useState } from "react";
-import { endpoints } from "../../config/api";
+import API_URL from "../../config/api";
 
 export default function useLogin() {
-  const [loading, setLoading] = useState(false);
-
-  const login = async (payload) => {
-    setLoading(true);
-
-    const res = await fetch(endpoints.login, {
+  const login = async ({ email, password }) => {
+    const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ email, password }),
     });
 
     const data = await res.json();
 
-    setLoading(false);
-
     if (!res.ok) {
-      throw new Error(data.message);
+      throw new Error(data.message || "Login failed");
     }
 
     return data;
   };
 
-  return { login, loading };
+  return { login };
 }

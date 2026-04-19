@@ -11,13 +11,18 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import ShimmerPlaceHolder from "react-native-shimmer-placeholder";
-import { USER_ID, BASE_URL } from "../config/user";
+import { BASE_URL } from "../config/user";
 import NetworkWrapper from "../components/common/NetworkWrapper";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function ProfileScreen({ navigation }) {
+  const { user, token } = useAuth();
+
+  const USER_ID = user?.id;
   const [userName, setUserName] = useState("");
   const [avatar, setAvatar] = useState(null);
-
+  const { logoutUser } = useAuth();
+  
   const [stats, setStats] = useState({
     ads: 0,
     views: 0,
@@ -41,7 +46,11 @@ export default function ProfileScreen({ navigation }) {
   const fetchAll = async () => {
     try {
       // 🔹 Fetch user
-      const userRes = await fetch(`${BASE_URL}/get_user/${USER_ID}`);
+       const userRes = await fetch(`${BASE_URL}/get_user/${USER_ID}`, {
+       headers: {
+       Authorization: `Bearer ${token}`,
+      }, 
+      });
       const userData = await userRes.json();
       const user = userData.user || userData;
 
@@ -69,12 +78,32 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure?", [
-      { text: "Cancel" },
-      { text: "Logout", onPress: () => navigation.replace("Home") },
-    ]);
-  };
+ 
+const handleLogout = () => {
+  Alert.alert("Logout", "Are you sure?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Logout",
+      style: "destructive",
+      onPress: async () => {
+        await logoutUser();
+
+        // 🔥 reset to Home tab (IMPORTANT)
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: "Main", // your root tab navigator
+              state: {
+                routes: [{ name: "Home" }],
+              },
+            },
+          ],
+        });
+      },
+    },
+  ]);
+};
 
   // 🔄 Shimmer
   const ProfileShimmer = () => (

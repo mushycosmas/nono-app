@@ -1,11 +1,12 @@
 import React, { createContext, useEffect, useState, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { googleLogin } from "../services/googleAuth"; // 🔥 ADD THIS
 
 const AuthContext = createContext();
 
+// 🔥 Hook (clean usage everywhere)
 export const useAuth = () => useContext(AuthContext);
 
+// 🔥 Provider
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -30,7 +31,7 @@ export const AuthProvider = ({ children }) => {
     loadAuth();
   }, []);
 
-  // ================= EMAIL LOGIN =================
+  // ================= LOGIN =================
   const loginUser = async (data) => {
     try {
       await AsyncStorage.setItem("token", data.token);
@@ -40,25 +41,6 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
     } catch (error) {
       console.log("Login save error:", error);
-    }
-  };
-
-  // ================= GOOGLE LOGIN (NEW) =================
-  const loginWithGoogle = async () => {
-    try {
-      const data = await googleLogin(); // backend response
-
-      if (!data?.token) return;
-
-      await AsyncStorage.setItem("token", data.token);
-      await AsyncStorage.setItem("user", JSON.stringify(data.user));
-
-      setToken(data.token);
-      setUser(data.user);
-
-      return data;
-    } catch (error) {
-      console.log("Google login error:", error);
     }
   };
 
@@ -81,7 +63,6 @@ export const AuthProvider = ({ children }) => {
         user,
         token,
         loginUser,
-        loginWithGoogle, // 🔥 ADD THIS
         logoutUser,
         loading,
       }}

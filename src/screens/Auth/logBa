@@ -4,11 +4,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
   Alert,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  StyleSheet
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,30 +16,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import useLogin from "../../hooks/auth/useLogin";
 import { useAuth } from "../../contexts/AuthContext";
 
-// 🔥 EXPO GOOGLE LOGIN
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-
-WebBrowser.maybeCompleteAuthSession();
-
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useLogin();
-  const { loginUser, loading } = useAuth();
+  const { loginUser, loading } = useAuth(); // 🔥 IMPORTANT FIX
 
-  // ================= GOOGLE AUTH =================
-  const [request, , promptAsync] = Google.useAuthRequest({
-    expoClientId:
-      "382651467340-nubruhe6cvqh37pqi8fc2725lvk37g16.apps.googleusercontent.com",
-    webClientId:
-      "382651467340-nubruhe6cvqh37pqi8fc2725lvk37g16.apps.googleusercontent.com",
-     androidClientId: "382651467340-39cndvsl9bbgj7iu8dhqhku9oto8kopk.apps.googleusercontent.com",
-  });
-
-  // ================= EMAIL LOGIN =================
+  // ================= LOGIN =================
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "All fields are required");
@@ -47,60 +32,21 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
+      // 1️⃣ Call API
       const res = await login({ email, password });
 
+      // 2️⃣ UPDATE GLOBAL STATE (FIX FOR YOUR ISSUE)
       await loginUser(res);
 
+      Alert.alert("Success", "Logged in successfully");
+
+      // 3️⃣ Navigate
       navigation.replace("Main", {
         screen: "HomeMain",
       });
+
     } catch (err) {
       Alert.alert("Login Failed", err.message);
-    }
-  };
-
-  // ================= GOOGLE LOGIN =================
-  const handleGoogleLogin = async () => {
-    try {
-      const result = await promptAsync();
-
-      if (result?.type !== "success") return;
-
-      const token = result?.authentication?.accessToken;
-
-      if (!token) {
-        Alert.alert("Error", "Google token not found");
-        return;
-      }
-
-      const res = await fetch(
-        "https://your-backend.com/api/auth/google",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            access_token: token,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (data?.token) {
-        await loginUser(data);
-
-        Alert.alert("Success", "Logged in with Google");
-
-        navigation.replace("Main", {
-          screen: "HomeMain",
-        });
-      } else {
-        Alert.alert("Error", "Invalid backend response");
-      }
-    } catch (err) {
-      Alert.alert("Google Login Failed", err.message);
     }
   };
 
@@ -111,6 +57,10 @@ export default function LoginScreen({ navigation }) {
     });
   };
 
+  const handleSocialLogin = (type) => {
+    Alert.alert(`${type} Login`, "Coming soon...");
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
       <KeyboardAvoidingView
@@ -118,6 +68,7 @@ export default function LoginScreen({ navigation }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView contentContainerStyle={styles.container}>
+
           {/* HEADER */}
           <View style={styles.header}>
             <TouchableOpacity onPress={goHome}>
@@ -142,20 +93,28 @@ export default function LoginScreen({ navigation }) {
           />
 
           {/* PASSWORD */}
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#999"
-            style={styles.passwordInput}
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-          />
+          <View style={styles.passwordBox}>
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor="#999"
+              style={styles.passwordInput}
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Icon
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={22}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
 
           {/* FORGOT PASSWORD */}
           <TouchableOpacity
-            onPress={() =>
-              Alert.alert("Reset Password", "Feature coming soon")
-            }
+            onPress={() => Alert.alert("Reset Password", "Feature coming soon")}
           >
             <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
@@ -172,10 +131,7 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* GUEST */}
-          <TouchableOpacity
-            style={styles.guestButton}
-            onPress={goHome}
-          >
+          <TouchableOpacity style={styles.guestButton} onPress={goHome}>
             <Icon name="home-outline" size={18} color="#28a745" />
             <Text style={styles.guestText}>Continue as Guest</Text>
           </TouchableOpacity>
@@ -187,28 +143,22 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.line} />
           </View>
 
-          {/* GOOGLE LOGIN */}
+          {/* GOOGLE */}
           <TouchableOpacity
             style={[styles.socialButton, styles.google]}
-            onPress={handleGoogleLogin}
+            onPress={() => handleSocialLogin("Google")}
           >
             <Icon name="logo-google" size={20} color="#DB4437" />
-            <Text style={styles.googleText}>
-              Continue with Google
-            </Text>
+            <Text style={styles.googleText}>Continue with Google</Text>
           </TouchableOpacity>
 
           {/* FACEBOOK */}
           <TouchableOpacity
             style={[styles.socialButton, styles.facebook]}
-            onPress={() =>
-              Alert.alert("Facebook Login", "Coming soon...")
-            }
+            onPress={() => handleSocialLogin("Facebook")}
           >
             <Icon name="logo-facebook" size={20} color="#fff" />
-            <Text style={styles.facebookText}>
-              Continue with Facebook
-            </Text>
+            <Text style={styles.facebookText}>Continue with Facebook</Text>
           </TouchableOpacity>
 
           {/* REGISTER */}
@@ -225,6 +175,7 @@ export default function LoginScreen({ navigation }) {
               Register
             </Text>
           </Text>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
