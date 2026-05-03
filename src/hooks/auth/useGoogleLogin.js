@@ -4,56 +4,80 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 
-// Configure ONCE (you can later move this to app entry)
 GoogleSignin.configure({
   webClientId:
     "711757867392-nhaifv485s7m1ejnthm4b2dkig0u893u.apps.googleusercontent.com",
   offlineAccess: true,
+  forceCodeForRefreshToken: true,
 });
 
 export default function useGoogleLogin() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { loginUser } = useAuth();
-  const navigation = useNavigation(); // ✅ FIX HERE
+  const navigation = useNavigation();
 
-const handleGoogleLogin = async () => {
-  try {
-    setGoogleLoading(true);
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
 
-    await GoogleSignin.hasPlayServices();
+      await GoogleSignin.hasPlayServices();
 
-    // 🔥 force account chooser
-    await GoogleSignin.signOut();
+      // 🔥 force account chooser (important)
+      await GoogleSignin.signOut();
 
-    const userInfo = await GoogleSignin.signIn();
+      // 🔥 SIGN IN
+      const userInfo = await GoogleSignin.signIn();
 
-    const idToken = userInfo.data?.idToken;
+      //console.log("🔥 USER INFO:", userInfo);
 
-    if (!idToken) {
-      Alert.alert("Error", "No ID Token received");
-      return;
+      // 🔥 GET TOKENS (THIS IS THE FIX)
+      const tokens = await GoogleSignin.getTokens();
+
+      console.log("🔥 TOKENS:", tokens);
+
+      const accessToken = tokens.accessToken;
+
+      if (!accessToken) {
+        Alert.alert("Error", "No access token received");
+        return;
+      }
+
+      // 🔥 SEND TO BACKEND
+      const res = await fetch(
+        "https://nono.co.tz/api/auth/google",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            access_token: accessToken,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      console.log("🔥 BACKEND RESPONSE:", data);
+
+      if (!res.ok) {
+        throw new Error(data.message || "Google login failed");
+      }
+
+      await loginUser(data);
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Main", params: { screen: "HomeMain" } }],
+      });
+
+    } catch (err) {
+      console.log("❌ Google Login Error:", err);
+      Alert.alert("Google Login Failed", err.message);
+    } finally {
+      setGoogleLoading(false);
     }
-
-    const res = await fetch("https://nono.co.tz/api/auth/google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_token: idToken }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) throw new Error(data.message);
-
-    await loginUser(data);
-
-    navigation.replace("Main", { screen: "HomeMain" });
-
-  } catch (err) {
-    Alert.alert("Google Login Failed", err.message);
-  } finally {
-    setGoogleLoading(false);
-  }
-};
+  };
 
   return {
     handleGoogleLogin,
