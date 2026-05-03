@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "711757867392",
+    "project_id": "nono-app-122a7",
+    "storage_bucket": "nono-app-122a7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:711757867392:android:d5d01aa9afa9bcb3bb3965",
+        "android_client_info": {
+          "package_name": "com.kelvin.nonoapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOZ2U7ZeUCv1kSFydMcj7PV_bVkVyKZPk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

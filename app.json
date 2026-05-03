@@ -23,14 +23,18 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"]
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/nono.png"
     },
     "plugins": [
-      "@react-native-google-signin/google-signin",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-build-properties",
+      "expo-font"
     ],
     "extra": {
       "eas": {

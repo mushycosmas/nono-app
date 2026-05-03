@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -9,7 +8,6 @@ import {
   ScrollView,
   Platform,
   StyleSheet,
-  ActivityIndicator,
 } from "react-native";
 
 import Icon from "react-native-vector-icons/Ionicons";
@@ -22,6 +20,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import auth from "@react-native-firebase/auth";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
+
 // ================= GOOGLE CONFIG =================
 GoogleSignin.configure({
   webClientId:
@@ -29,93 +28,89 @@ GoogleSignin.configure({
   offlineAccess: true,
 });
 
+
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const { login } = useLogin();
   const { loginUser, loading } = useAuth();
 
+
   // ================= EMAIL LOGIN =================
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Email and password required");
+      Alert.alert("Error", "All fields required");
       return;
     }
 
     try {
       const res = await login({ email, password });
+
       await loginUser(res);
 
-      navigation.replace("Main", { screen: "HomeMain" });
+      navigation.replace("Main", {
+        screen: "HomeMain",
+      });
     } catch (err) {
       Alert.alert("Login Failed", err.message);
     }
   };
 
-  // ================= GOOGLE LOGIN (FIXED) =================
+
+  // ================= GOOGLE LOGIN =================
   const handleGoogleLogin = async () => {
     try {
-      setGoogleLoading(true);
-
       console.log("🚀 Starting Google Sign-In");
 
       await GoogleSignin.hasPlayServices();
 
-      const userInfo = await GoogleSignin.signIn();
+      const result = await GoogleSignin.signIn();
 
-      const idToken = userInfo.idToken;
+      console.log("📱 Google Result:", result);
+
+      const idToken =
+        result?.idToken ||
+        result?.data?.idToken;
 
       if (!idToken) {
-        Alert.alert("Error", "No ID Token received");
+        Alert.alert("Error", "No ID token received from Google");
         return;
       }
 
-      // 🔥 Firebase credential
+      // Firebase credential
       const googleCredential =
         auth.GoogleAuthProvider.credential(idToken);
 
-      const firebaseUser =
+      const userCredential =
         await auth().signInWithCredential(googleCredential);
 
-      console.log("✅ Firebase user:", firebaseUser.user.email);
+      console.log("✅ Firebase User:", userCredential.user);
 
-      // optional backend sync
-      const res = await fetch("https://nono.co.tz/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_token: idToken,
-          email: firebaseUser.user.email,
-        }),
+      Alert.alert(
+        "Success",
+        `Welcome ${userCredential.user.email}`
+      );
+
+      navigation.replace("Main", {
+        screen: "HomeMain",
       });
 
-      const data = await res.json();
-
-      await loginUser(data);
-
-      Alert.alert("Success", "Logged in with Google");
-
-      navigation.replace("Main", { screen: "HomeMain" });
-    } catch (err) {
-      console.log("❌ Google Login Error:", err);
-      Alert.alert("Google Login Failed", err.message);
-    } finally {
-      setGoogleLoading(false);
+    } catch (error) {
+      console.log("❌ Google Login Error:", error);
+      Alert.alert("Google Login Failed", error.message);
     }
   };
-//C:\Users\Hp\Desktop\kariakooplus\src\pages\api\auth\login.ts
+
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView contentContainerStyle={styles.container}>
-
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Login to continue</Text>
+          <Text style={styles.title}>Login</Text>
 
           {/* EMAIL */}
           <TextInput
@@ -123,7 +118,6 @@ export default function LoginScreen({ navigation }) {
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            keyboardType="email-address"
           />
 
           {/* PASSWORD */}
@@ -135,34 +129,22 @@ export default function LoginScreen({ navigation }) {
             onChangeText={setPassword}
           />
 
-          {/* LOGIN BUTTON */}
+          {/* EMAIL LOGIN BUTTON */}
           <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Login</Text>
-            )}
+            <Text style={styles.buttonText}>
+              {loading ? "Loading..." : "Login"}
+            </Text>
           </TouchableOpacity>
-
-          {/* DIVIDER */}
-          <Text style={styles.or}>OR</Text>
 
           {/* GOOGLE LOGIN */}
           <TouchableOpacity
             style={styles.googleBtn}
             onPress={handleGoogleLogin}
-            disabled={googleLoading}
           >
-            {googleLoading ? (
-              <ActivityIndicator />
-            ) : (
-              <>
-                <Icon name="logo-google" size={20} color="#DB4437" />
-                <Text style={styles.googleText}>
-                  Continue with Google
-                </Text>
-              </>
-            )}
+            <Icon name="logo-google" size={20} color="#DB4437" />
+            <Text style={styles.googleText}>
+              Continue with Google
+            </Text>
           </TouchableOpacity>
 
         </ScrollView>
@@ -170,44 +152,36 @@ export default function LoginScreen({ navigation }) {
     </SafeAreaView>
   );
 }
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#f7f7f7",
-  },
 
+
+// ================= STYLES =================
+const styles = StyleSheet.create({
   container: {
+    padding: 20,
     flexGrow: 1,
     justifyContent: "center",
-    padding: 20,
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "700",
+    marginBottom: 20,
     textAlign: "center",
-    marginBottom: 5,
-  },
-
-  subtitle: {
-    textAlign: "center",
-    color: "#777",
-    marginBottom: 30,
   },
 
   input: {
     backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 12,
+    padding: 15,
+    borderRadius: 10,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: "#ddd",
   },
 
   button: {
     backgroundColor: "#28a745",
     padding: 15,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: "center",
     marginTop: 10,
   },
@@ -217,22 +191,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  or: {
-    textAlign: "center",
-    marginVertical: 15,
-    color: "#999",
-  },
-
   googleBtn: {
     flexDirection: "row",
-    justifyContent: "center",
     gap: 10,
-    padding: 14,
-    borderRadius: 12,
+    padding: 15,
+    marginTop: 15,
+    backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#ddd",
-    backgroundColor: "#fff",
-    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
   },
 
   googleText: {

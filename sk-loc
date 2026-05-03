@@ -1,0 +1,50 @@
+// npx expo prebuild
+//local.properties
+//C:\Users\Hp\Desktop\nono-app\android\
+//sdk.dir=C:\\Users\\Hp\\AppData\\Local\\Android\\Sdk
+
+//cd android
+//gradlew.bat clean
+//gradlew.bat assembleDebug
+
+//Remove-Item -Recurse -Force android
+
+//Remove-Item -Recurse -Force node_modules
+
+
+// react {
+//     entryFile = file("../../index.js")
+
+//     reactNativeDir = file("../../node_modules/react-nandroid/app/build.gradleandroid/app/build.gradleative")
+//     codegenDir = file("../../node_modules/@react-native/codegen")
+
+//     bundleCommand = "export:embed"
+
+//     autolinkLibrariesWithApp()
+// }
+
+
+//  defaultConfig {
+//         applicationId 'com.kelvin.nonoapp'
+//         minSdkVersion rootProject.ext.minSdkVersion
+//         targetSdkVersion rootProject.ext.targetSdkVersion
+//         versionCode 1
+//         versionName "1.0.0"
+//        manifestPlaceholders = [
+//         appAuthRedirectScheme: "nonoapp"
+//        ]
+
+//         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+//     }
+
+
+
+
+
+ // classpath("com.google.gms:google-services:4.4.2")
+
+ //to new 
+// apply plugin: "com.android.application"
+// apply plugin: "org.jetbrains.kotlin.android"
+// apply plugin: "com.facebook.react"
+// apply plugin: "com.google.gms.google-services"
