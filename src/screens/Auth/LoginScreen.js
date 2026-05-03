@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -10,32 +9,23 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
+  View,
 } from "react-native";
 
 import Icon from "react-native-vector-icons/Ionicons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import useLogin from "../../hooks/auth/useLogin";
-import { useAuth } from "../../contexts/AuthContext";
-
-// Firebase
-import auth from "@react-native-firebase/auth";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
-
-// ================= GOOGLE CONFIG =================
-GoogleSignin.configure({
-  webClientId:
-    "711757867392-nhaifv485s7m1ejnthm4b2dkig0u893u.apps.googleusercontent.com",
-  offlineAccess: true,
-});
+import useGoogleLogin from "../../hooks/auth/useGoogleLogin";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const { login } = useLogin();
-  const { loginUser, loading } = useAuth();
+
+  // Google login hook
+  const { handleGoogleLogin, googleLoading } = useGoogleLogin();
 
   // ================= EMAIL LOGIN =================
   const handleLogin = async () => {
@@ -46,66 +36,17 @@ export default function LoginScreen({ navigation }) {
 
     try {
       const res = await login({ email, password });
-      await loginUser(res);
 
-      navigation.replace("Main", { screen: "HomeMain" });
-    } catch (err) {
-      Alert.alert("Login Failed", err.message);
-    }
-  };
+      Alert.alert("Success", "Login successful");
 
-  // ================= GOOGLE LOGIN (FIXED) =================
-  const handleGoogleLogin = async () => {
-    try {
-      setGoogleLoading(true);
-
-      console.log("🚀 Starting Google Sign-In");
-
-      await GoogleSignin.hasPlayServices();
-
-      const userInfo = await GoogleSignin.signIn();
-
-      const idToken = userInfo.idToken;
-
-      if (!idToken) {
-        Alert.alert("Error", "No ID Token received");
-        return;
-      }
-
-      // 🔥 Firebase credential
-      const googleCredential =
-        auth.GoogleAuthProvider.credential(idToken);
-
-      const firebaseUser =
-        await auth().signInWithCredential(googleCredential);
-
-      console.log("✅ Firebase user:", firebaseUser.user.email);
-
-      // optional backend sync
-      const res = await fetch("https://nono.co.tz/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_token: idToken,
-          email: firebaseUser.user.email,
-        }),
+      navigation.replace("Main", {
+        screen: "HomeMain",
       });
-
-      const data = await res.json();
-
-      await loginUser(data);
-
-      Alert.alert("Success", "Logged in with Google");
-
-      navigation.replace("Main", { screen: "HomeMain" });
     } catch (err) {
-      console.log("❌ Google Login Error:", err);
-      Alert.alert("Google Login Failed", err.message);
-    } finally {
-      setGoogleLoading(false);
+      Alert.alert("Login Failed", err?.message || "Unable to login");
     }
   };
-//C:\Users\Hp\Desktop\kariakooplus\src\pages\api\auth\login.ts
+
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
@@ -114,21 +55,25 @@ export default function LoginScreen({ navigation }) {
       >
         <ScrollView contentContainerStyle={styles.container}>
 
+          {/* TITLE */}
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Login to continue</Text>
 
           {/* EMAIL */}
           <TextInput
             placeholder="Email"
+            placeholderTextColor="#999"
             style={styles.input}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            autoCapitalize="none"
           />
 
           {/* PASSWORD */}
           <TextInput
             placeholder="Password"
+            placeholderTextColor="#999"
             style={styles.input}
             secureTextEntry
             value={password}
@@ -136,44 +81,75 @@ export default function LoginScreen({ navigation }) {
           />
 
           {/* LOGIN BUTTON */}
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Login</Text>
-            )}
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={handleLogin}
+          >
+            <Text style={styles.loginText}>Login</Text>
           </TouchableOpacity>
 
-          {/* DIVIDER */}
+          {/* OR */}
           <Text style={styles.or}>OR</Text>
 
           {/* GOOGLE LOGIN */}
           <TouchableOpacity
-            style={styles.googleBtn}
+            style={styles.googleButton}
             onPress={handleGoogleLogin}
             disabled={googleLoading}
           >
             {googleLoading ? (
               <ActivityIndicator />
             ) : (
-              <>
+              <View style={styles.row}>
                 <Icon name="logo-google" size={20} color="#DB4437" />
                 <Text style={styles.googleText}>
                   Continue with Google
                 </Text>
-              </>
+              </View>
             )}
           </TouchableOpacity>
+
+          {/* FACEBOOK */}
+          <TouchableOpacity
+            style={styles.facebookButton}
+            onPress={() =>
+              Alert.alert("Facebook Login", "Coming soon...")
+            }
+          >
+            <View style={styles.row}>
+              <Icon name="logo-facebook" size={20} color="#fff" />
+              <Text style={styles.facebookText}>
+                Continue with Facebook
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* REGISTER LINK */}
+          <Text style={styles.footerText}>
+            Don't have an account?{" "}
+            <Text
+              style={styles.link}
+              onPress={() =>
+                navigation.navigate("Register", {
+                  screen: "Register",
+                })
+              }
+            >
+              Register
+            </Text>
+          </Text>
 
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+/* ================= STYLES ================= */
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#f7f7f7",
+    backgroundColor: "#FAFAFA",
   },
 
   container: {
@@ -186,13 +162,14 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     textAlign: "center",
+    color: "#111",
     marginBottom: 5,
   },
 
   subtitle: {
     textAlign: "center",
     color: "#777",
-    marginBottom: 30,
+    marginBottom: 25,
   },
 
   input: {
@@ -204,7 +181,7 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
   },
 
-  button: {
+  loginButton: {
     backgroundColor: "#28a745",
     padding: 15,
     borderRadius: 12,
@@ -212,7 +189,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  buttonText: {
+  loginText: {
     color: "#fff",
     fontWeight: "600",
   },
@@ -223,19 +200,49 @@ const styles = StyleSheet.create({
     color: "#999",
   },
 
-  googleBtn: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 10,
-    padding: 14,
-    borderRadius: 12,
+  googleButton: {
+    backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#ddd",
-    backgroundColor: "#fff",
+    padding: 14,
+    borderRadius: 12,
     alignItems: "center",
+    marginBottom: 10,
   },
 
   googleText: {
+    marginLeft: 10,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  facebookButton: {
+    backgroundColor: "#1877F2",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+
+  facebookText: {
+    marginLeft: 10,
+    fontWeight: "600",
+    color: "#fff",
+  },
+
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  footerText: {
+    textAlign: "center",
+    marginTop: 20,
+    color: "#666",
+  },
+
+  link: {
+    color: "#28a745",
     fontWeight: "600",
   },
 });

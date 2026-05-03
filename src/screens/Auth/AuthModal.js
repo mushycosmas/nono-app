@@ -5,14 +5,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+
 import Icon from "react-native-vector-icons/Ionicons";
+import useGoogleLogin from "../../hooks/auth/useGoogleLogin";
 
 export default function AuthModal({ visible, onClose, navigation }) {
-  const handleLogin = (type) => {
-    onClose();
-    // TODO: connect real auth later
-    console.log("Login with:", type);
+  // ✅ Google login hook
+  const {
+    handleGoogleLogin,
+    googleLoading,
+  } = useGoogleLogin(navigation); // IMPORTANT: pass navigation
+
+  // fallback for facebook (still dummy)
+  const handleFacebookLogin = () => {
+    Alert.alert("Facebook Login", "Coming soon...");
   };
 
   return (
@@ -25,29 +34,44 @@ export default function AuthModal({ visible, onClose, navigation }) {
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <Text style={styles.title}>Welcome 👋</Text>
+
           <Text style={styles.subtitle}>
             Login to continue selling and managing your profile
           </Text>
 
-          {/* Google */}
+          {/* ================= GOOGLE ================= */}
           <TouchableOpacity
             style={[styles.button, styles.google]}
-            onPress={() => handleLogin("google")}
+            onPress={async () => {
+              await handleGoogleLogin();
+              onClose(); // close modal after login
+            }}
+            disabled={googleLoading}
           >
-            <Icon name="logo-google" size={20} color="#DB4437" />
-            <Text style={styles.googleText}>Continue with Google</Text>
+            {googleLoading ? (
+              <ActivityIndicator />
+            ) : (
+              <>
+                <Icon name="logo-google" size={20} color="#DB4437" />
+                <Text style={styles.googleText}>
+                  Continue with Google
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
 
-          {/* Facebook */}
+          {/* ================= FACEBOOK ================= */}
           <TouchableOpacity
             style={[styles.button, styles.facebook]}
-            onPress={() => handleLogin("facebook")}
+            onPress={handleFacebookLogin}
           >
             <Icon name="logo-facebook" size={20} color="#fff" />
-            <Text style={styles.facebookText}>Continue with Facebook</Text>
+            <Text style={styles.facebookText}>
+              Continue with Facebook
+            </Text>
           </TouchableOpacity>
 
-          {/* Email/Login */}
+          {/* ================= EMAIL ================= */}
           <TouchableOpacity
             style={[styles.button, styles.email]}
             onPress={() => {
@@ -55,10 +79,12 @@ export default function AuthModal({ visible, onClose, navigation }) {
               navigation.navigate("Auth", { screen: "Login" });
             }}
           >
-            <Text style={styles.emailText}>Login with Email / Phone</Text>
+            <Text style={styles.emailText}>
+              Login with Email / Phone
+            </Text>
           </TouchableOpacity>
 
-          {/* Register */}
+          {/* ================= REGISTER ================= */}
           <Text style={styles.footer}>
             Don’t have an account?{" "}
             <Text
@@ -72,6 +98,7 @@ export default function AuthModal({ visible, onClose, navigation }) {
             </Text>
           </Text>
 
+          {/* CLOSE */}
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.close}>Close</Text>
           </TouchableOpacity>
@@ -80,7 +107,6 @@ export default function AuthModal({ visible, onClose, navigation }) {
     </Modal>
   );
 }
-
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,

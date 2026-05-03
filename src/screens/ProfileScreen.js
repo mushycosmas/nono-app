@@ -79,7 +79,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
  
-const handleLogout = () => {
+  const handleLogout = () => {
   Alert.alert("Logout", "Are you sure?", [
     { text: "Cancel", style: "cancel" },
     {
@@ -88,17 +88,9 @@ const handleLogout = () => {
       onPress: async () => {
         await logoutUser();
 
-        // 🔥 reset to Home tab (IMPORTANT)
         navigation.reset({
           index: 0,
-          routes: [
-            {
-              name: "Main", // your root tab navigator
-              state: {
-                routes: [{ name: "Home" }],
-              },
-            },
-          ],
+          routes: [{ name: "Main" }],
         });
       },
     },

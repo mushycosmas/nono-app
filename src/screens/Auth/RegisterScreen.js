@@ -8,13 +8,19 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  Alert,ActivityIndicator
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import useRegister from "../../hooks/auth/useRegister";
+import useGoogleLogin from "../../hooks/auth/useGoogleLogin";
 
 export default function RegisterScreen({ navigation, route }) {
   const { register, loading } = useRegister();
+
+    const {
+    handleGoogleLogin,
+    googleLoading,
+   } = useGoogleLogin(navigation);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -199,12 +205,26 @@ export default function RegisterScreen({ navigation, route }) {
         </View>
 
         {/* ================= SOCIAL ================= */}
+        
         <TouchableOpacity
           style={[styles.socialButton, styles.google]}
-          onPress={() => handleSocialLogin("Google")}
+          onPress={handleGoogleLogin}
+          disabled={googleLoading}
         >
-          <Icon name="logo-google" size={20} color="#DB4437" />
-          <Text style={styles.googleText}>Continue with Google</Text>
+          {googleLoading ? (
+            <ActivityIndicator />
+          ) : (
+            <>
+              <Icon
+                name="logo-google"
+                size={20}
+                color="#DB4437"
+              />
+              <Text style={styles.googleText}>
+                Continue with Google
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
