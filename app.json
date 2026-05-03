@@ -8,14 +8,17 @@
     "userInterfaceStyle": "light",
     "scheme": "nonoapp",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/nono.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": true
     },
+
     "android": {
       "package": "com.kelvin.nonoapp",
       "adaptiveIcon": {
@@ -28,18 +31,22 @@
         "READ_EXTERNAL_STORAGE"
       ]
     },
+
     "web": {
       "favicon": "./assets/nono.png"
     },
+
     "plugins": [
       "expo-web-browser",
       "expo-build-properties",
       "expo-font"
     ],
+
     "extra": {
       "eas": {
         "projectId": "f45a13d1-d6a4-4ace-85a2-b5a58262abc6"
-      }
+      },
+      "appAuthRedirectScheme": "nonoapp"
     }
   }
 }
